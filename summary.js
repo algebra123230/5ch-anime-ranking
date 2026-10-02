@@ -1,5 +1,5 @@
 // Summarizes a viewer's list (see lists.js) against the chart cells, and formats it as shareable text.
-import { STATUSES } from "./lists.js";
+import { STATUSES, sourceLabel } from "./lists.js";
 
 const LABELS = { completed: "Completed", watching: "Watching", on_hold: "On hold", dropped: "Dropped", planning: "Planning" };
 // Score formats that average to a meaningful number, with the scale shown after it.
@@ -34,7 +34,7 @@ export function summaryText({ shows, counts, byYear, average }, list, url) {
   const most = Math.max(...[...byYear.values()].map((y) => y.completed));
   const top = years.filter((y) => byYear.get(y).completed === most);
   return [
-    `5ch Best Anime Ranking ${Math.min(...years)}-${Math.max(...years)} - ${list.source === "anilist" ? "AniList" : "MAL"}: ${list.name}`,
+    `5ch Best Anime Ranking ${Math.min(...years)}-${Math.max(...years)} - ${sourceLabel(list)}: ${list.name}`,
     `Completed ${counts.completed} of ${shows} shows`,
     STATUSES.slice(1).map((s) => `${LABELS[s]} ${counts[s]}`).join(" · "),
     average && `Average score: ${average.value.toFixed(1)}/${average.scale} (${average.scored} scored)`,

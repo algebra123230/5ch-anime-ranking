@@ -88,6 +88,10 @@ export async function parseMalFile(file) {
   return { source: "mal", name, scoreFormat: "MAL", entries };
 }
 
+export function sourceLabel(list) {
+  return list.source === "anilist" ? "AniList" : "MAL";
+}
+
 // AniList POINT_100 / POINT_10_DECIMAL / POINT_10 and MAL scores are shown as plain numbers.
 export function formatScore(score, scoreFormat) {
   if (!score) return "";

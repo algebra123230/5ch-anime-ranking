@@ -1,6 +1,6 @@
 // Renders the ranking table once; applyState redraws every cell from the URL state and the loaded list.
 import {
-  STATUSES, ListError, parseAniListUser, loadAniList, parseMalFile, formatScore, encodeMalList, decodeMalList,
+  STATUSES, ListError, parseAniListUser, loadAniList, parseMalFile, formatScore, encodeMalList, decodeMalList, sourceLabel,
 } from "./lists.js";
 import { summarize, summaryText } from "./summary.js";
 
@@ -84,7 +84,7 @@ function applyState(state) {
     span.parentElement.title = summary ? `${completed} of ${size} completed` : "";
   }
   $("#list-bar").hidden = !list;
-  if (list) $("#list-name").textContent = `${list.source === "anilist" ? "AniList" : "MAL"}: ${list.name}`;
+  if (list) $("#list-name").textContent = `${sourceLabel(list)}: ${list.name}`;
   for (const box of document.querySelectorAll("[data-status]")) {
     box.checked = !hidden.has(box.dataset.status);
     box.parentElement.querySelector(".count").textContent = `(${summary?.counts[box.dataset.status] ?? 0})`;
