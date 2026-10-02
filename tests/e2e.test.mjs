@@ -114,6 +114,7 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
     await new Promise((resolve) => setTimeout(resolve, 500)); // long enough to see the loading state
     return r.fulfill({ json: ANILIST_LIST });
   });
+  await page.addInitScript(() => { navigator.share = async (data) => { window.shared = data; }; });
   await page.goto(`${base}?anilist=nobody`);
   await page.locator("#load-error", { hasText: 'No AniList user named "nobody".' }).waitFor();
 
@@ -150,6 +151,15 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
   ].join("\n"));
   await page.click("#copy-summary");
   await page.locator("#copy-status", { hasText: "Copied." }).waitFor();
+  const post = "tester's 5ch Best Anime Ranking 2001-2025: 1/723 completed · avg 85.0/100 · top year 2014";
+  const x = new URL(await page.getAttribute("#share-x", "href"));
+  assert.equal(x.origin + x.pathname, "https://x.com/intent/post");
+  assert.equal(x.searchParams.get("text"), post);
+  assert.equal(x.searchParams.get("url"), page.url());
+  const bluesky = new URL(await page.getAttribute("#share-bluesky", "href"));
+  assert.equal(bluesky.searchParams.get("text"), `${post} ${page.url()}`);
+  await page.click("#share-native");
+  assert.deepEqual(await page.evaluate(() => window.shared), { text: post, url: page.url() });
   await page.click("#summary-dialog .close");
 
   await page.uncheck('[data-status="completed"]');

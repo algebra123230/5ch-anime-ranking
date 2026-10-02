@@ -29,16 +29,38 @@ export function summarize(list, cells) {
   return { shows: seen.size, counts, byYear, average };
 }
 
-export function summaryText({ shows, counts, byYear, average }, list, url) {
+// Year range, and the most-completed years (all ties) with their count; topYears is empty if nothing is completed.
+function highlights(byYear) {
   const years = [...byYear.keys()];
   const most = Math.max(...[...byYear.values()].map((y) => y.completed));
-  const top = years.filter((y) => byYear.get(y).completed === most);
+  return {
+    range: `${Math.min(...years)}-${Math.max(...years)}`,
+    most,
+    topYears: most > 0 ? years.filter((y) => byYear.get(y).completed === most) : [],
+  };
+}
+
+const formatAverage = ({ value, scale }) => `${value.toFixed(1)}/${scale}`;
+
+// Multi-line text for the Copy button.
+export function summaryText({ shows, counts, byYear, average }, list, url) {
+  const { range, most, topYears } = highlights(byYear);
   return [
-    `5ch Best Anime Ranking ${Math.min(...years)}-${Math.max(...years)} - ${sourceLabel(list)}: ${list.name}`,
+    `5ch Best Anime Ranking ${range} - ${sourceLabel(list)}: ${list.name}`,
     `Completed ${counts.completed} of ${shows} shows`,
     STATUSES.slice(1).map((s) => `${LABELS[s]} ${counts[s]}`).join(" · "),
-    average && `Average score: ${average.value.toFixed(1)}/${average.scale} (${average.scored} scored)`,
-    most > 0 && `Most completed year${top.length > 1 ? "s" : ""}: ${top.join(", ")} (${most} of ${byYear.get(top[0]).size})`,
+    average && `Average score: ${formatAverage(average)} (${average.scored} scored)`,
+    topYears.length && `Most completed year${topYears.length > 1 ? "s" : ""}: ${topYears.join(", ")} (${most} of ${byYear.get(topYears[0]).size})`,
     url,
   ].filter(Boolean).join("\n");
+}
+
+// One line for social posts; the link is passed separately.
+export function postText({ shows, counts, byYear, average }, list) {
+  const { range, topYears } = highlights(byYear);
+  return [
+    `${list.name}'s 5ch Best Anime Ranking ${range}: ${counts.completed}/${shows} completed`,
+    average && `avg ${formatAverage(average)}`,
+    topYears.length && `top year ${topYears.join(", ")}`,
+  ].filter(Boolean).join(" · ");
 }

@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>5ch Best Anime Ranking 2001-2025</title>
+  <meta name="description" content="The 5ch best anime of the year ranking, 2001-2025, top 30 per year. Load your AniList or MAL list to see what you've watched.">
+  <!-- Link previews (X, Bluesky, Discord, Facebook). Crawlers don't run JS, so every link shows this same preview. -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://algebra123230.github.io/5ch-anime-ranking/">
+  <meta property="og:title" content="5ch Best Anime Ranking 2001-2025">
+  <meta property="og:description" content="The 5ch best anime of the year ranking, top 30 per year. Load your AniList or MAL list to see what you've watched.">
+  <meta property="og:image" content="https://algebra123230.github.io/5ch-anime-ranking/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="style.css">
   <link rel="preload" href="data/anime.json" as="fetch" crossorigin>
   <script type="module" src="app.js"></script>
@@ -67,11 +77,14 @@
       <h2 id="summary-title">List summary</h2>
       <button type="button" class="close" aria-label="Close">×</button>
     </div>
-    <textarea id="summary-text" readonly rows="7" aria-label="Summary text"></textarea>
-    <div class="row">
+    <textarea id="summary-text" readonly rows="9" aria-label="Summary text"></textarea>
+    <div class="row share-row">
       <button type="button" id="copy-summary">Copy</button>
-      <p id="copy-status" role="status"></p>
+      <a id="share-x" class="share" target="_blank" rel="noopener">Post on X</a>
+      <a id="share-bluesky" class="share" target="_blank" rel="noopener">Post on Bluesky</a>
+      <button type="button" id="share-native" class="share" hidden>Share…</button>
     </div>
+    <p id="copy-status" role="status"></p>
   </dialog>
 </body>
 </html>

@@ -2,7 +2,7 @@
 import {
   STATUSES, ListError, parseAniListUser, loadAniList, parseMalFile, formatScore, encodeMalList, decodeMalList, sourceLabel,
 } from "./lists.js";
-import { summarize, summaryText } from "./summary.js";
+import { summarize, summaryText, postText } from "./summary.js";
 
 const CONTROLS = { lang: ["ja", "romaji", "en"], links: ["mal", "anilist"] };
 // Elements applyState rewrites; set from renderTable's result (may not be in the document yet).
@@ -217,11 +217,19 @@ function wireDialog() {
 function wireSummary() {
   const dialog = $("#summary-dialog");
   const status = $("#copy-status");
+  let post = null; // { text, url } for the share buttons
   $("#open-summary").addEventListener("click", () => {
-    $("#summary-text").value = summaryText(summarize(list, view.cells), list, location.href);
+    const summary = summarize(list, view.cells);
+    post = { text: postText(summary, list), url: location.href };
+    $("#summary-text").value = summaryText(summary, list, post.url);
+    $("#share-x").href = `https://x.com/intent/post?${new URLSearchParams(post)}`;
+    $("#share-bluesky").href = `https://bsky.app/intent/compose?${new URLSearchParams({ text: `${post.text} ${post.url}` })}`;
     status.textContent = "";
     dialog.showModal();
   });
+  // The system share sheet (mostly phones) reaches apps without a web share link: Instagram, Discord, LINE, Messages.
+  $("#share-native").hidden = !navigator.share;
+  $("#share-native").addEventListener("click", () => navigator.share(post).catch(() => {})); // rejects when the viewer cancels
   $("#copy-summary").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText($("#summary-text").value); // clipboard is undefined on insecure origins
