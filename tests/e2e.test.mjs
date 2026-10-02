@@ -1,5 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { gzipSync } from "node:zlib";
 import { chromium } from "playwright-core";
 import { startServer } from "./server.mjs";
 
@@ -14,7 +15,8 @@ after(async () => {
   server?.close();
 });
 
-const link = (page, year, rank) => page.locator(`td[data-year="${year}"][data-rank="${rank}"] a`);
+const td = (page, year, rank) => page.locator(`td[data-year="${year}"][data-rank="${rank}"]`);
+const link = (page, year, rank) => td(page, year, rank).locator("a");
 const click = (page, control, value) => page.click(`[data-control="${control}"] button[data-value="${value}"]`);
 
 test("real data: 750 cells; title and link toggles; state survives reload", async () => {
@@ -78,5 +80,130 @@ test("data load failure shows a readable error", async () => {
   await page.goto(base);
   await page.locator("#status", { hasText: "Couldn't load the ranking data" }).waitFor();
   assert.equal(await page.locator("table.ranking").count(), 0);
+  await page.close();
+});
+
+const hasClass = (locator, name) => locator.evaluate((node, name) => node.classList.contains(name), name);
+
+// Mahouka (2014 #17): MAL 20785, AniList 20458. Attack on Titan (2013 #1): MAL = AniList = 16498.
+const ANILIST_LIST = {
+  data: {
+    MediaListCollection: {
+      user: { name: "tester", mediaListOptions: { scoreFormat: "POINT_100" } },
+      lists: [{ entries: [
+        { status: "COMPLETED", score: 85, media: { idMal: 20785 } },
+        { status: "DROPPED", score: 0, media: { idMal: 16498 } },
+        { status: "PLANNING", score: 0, media: { idMal: null } }, // not on MAL: ignored
+      ] }],
+    },
+  },
+};
+
+test("AniList list: errors, profile URL, statuses, filters, scores, reload", async () => {
+  const page = await browser.newPage();
+  await page.route("https://graphql.anilist.co/**", async (r) => {
+    const { name } = r.request().postDataJSON().variables;
+    if (name !== "tester") {
+      return r.fulfill({ status: 404, json: { errors: [{ message: "User not found", status: 404 }], data: { MediaListCollection: null } } });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500)); // long enough to see the loading state
+    return r.fulfill({ json: ANILIST_LIST });
+  });
+  await page.goto(`${base}?anilist=nobody`);
+  await page.locator("#load-error", { hasText: 'No AniList user named "nobody".' }).waitFor();
+
+  await page.click("#open-load");
+  await page.fill("#anilist-name", "nobody");
+  await page.click("#panel-anilist button[type=submit]");
+  await page.locator("#panel-anilist .error", { hasText: 'No AniList user named "nobody".' }).waitFor();
+
+  await page.fill("#anilist-name", "  https://anilist.co/user/tester/stats/anime/tags ");
+  await page.click("#panel-anilist button[type=submit]");
+  await page.locator("#list-bar").waitFor();
+  assert.equal(await page.locator("#load-dialog").evaluate((d) => d.open), false);
+  assert.match(page.url(), /anilist=tester/);
+
+  const mahouka = td(page, 2014, 17);
+  const aot = td(page, 2013, 1);
+  assert.ok(await hasClass(mahouka, "s-completed"));
+  assert.equal(await mahouka.locator(".score").innerText(), "85");
+  assert.ok(await hasClass(aot, "s-dropped"));
+  assert.equal(await aot.locator(".score").innerText(), "");
+  assert.ok(await hasClass(td(page, 2001, 1), "faded"));
+  assert.match(await page.locator("label", { has: page.locator('[data-status="completed"]') }).innerText(), /\(1\)/);
+
+  await page.uncheck('[data-status="completed"]');
+  assert.ok(await hasClass(mahouka, "faded"));
+  assert.ok(!(await hasClass(mahouka, "s-completed")));
+  await page.uncheck("#show-scores");
+  await page.check('[data-status="completed"]');
+  assert.equal(await mahouka.locator(".score").innerText(), "");
+
+  await page.uncheck('[data-status="dropped"]');
+
+  await page.reload();
+  await page.locator("#load-status", { hasText: "Loading tester's AniList list…" }).waitFor();
+  await page.locator("#list-bar").waitFor();
+  assert.equal(await page.isVisible("#load-status"), false);
+  assert.ok(await hasClass(mahouka, "s-completed"));
+  assert.ok(await hasClass(aot, "faded"));
+  assert.equal(await page.isChecked('[data-status="dropped"]'), false);
+  assert.equal(await page.isChecked("#show-scores"), false);
+
+  // Loading a MAL export replaces the AniList list and drops it from the URL.
+  await page.click("#open-load");
+  await page.click("#tab-mal");
+  await page.setInputFiles("#mal-file", { name: "animelist.xml", mimeType: "text/xml", buffer: Buffer.from(MAL_XML) });
+  await page.locator("#list-name", { hasText: "maltester" }).waitFor();
+  assert.doesNotMatch(page.url(), /anilist=/);
+  assert.ok(await hasClass(mahouka, "s-watching"));
+  await page.close();
+});
+
+const MAL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<myanimelist>
+  <myinfo><user_name>maltester</user_name></myinfo>
+  <anime><series_animedb_id>20785</series_animedb_id><my_score>9</my_score><my_status>Watching</my_status></anime>
+  <anime><series_animedb_id>831</series_animedb_id><my_score>0</my_score><my_status>Completed</my_status></anime>
+</myanimelist>`;
+
+test("MAL export: bad file error, .xml.gz upload, list kept in the URL, clear, broken link", async () => {
+  const page = await browser.newPage();
+  await page.goto(base);
+  await page.waitForSelector("table.ranking");
+
+  await page.click("#open-load");
+  await page.click("#tab-mal");
+  await page.setInputFiles("#mal-file", { name: "notes.xml", mimeType: "text/xml", buffer: Buffer.from("<notes/>") });
+  await page.locator("#panel-mal .error", { hasText: "This file isn't a MAL export" }).waitFor();
+
+  await page.setInputFiles("#mal-file", { name: "animelist.xml.gz", mimeType: "application/gzip", buffer: gzipSync(MAL_XML) });
+  await page.locator("#list-bar").waitFor();
+  const mahouka = td(page, 2014, 17);
+  assert.ok(await hasClass(mahouka, "s-watching"));
+  assert.equal(await mahouka.locator(".score").innerText(), "9");
+  assert.match(await page.innerText("#list-name"), /maltester/);
+  // Sugar charted in 2001 and 2002: both cells colored, counted once.
+  assert.ok(await hasClass(td(page, 2001, 18), "s-completed"));
+  assert.ok(await hasClass(td(page, 2002, 3), "s-completed"));
+  assert.match(await page.locator("label", { has: page.locator('[data-status="completed"]') }).innerText(), /\(1\)/);
+
+  const shared = page.url();
+  assert.match(shared, /mal=/);
+  const other = await browser.newPage();
+  await other.goto(shared);
+  await other.locator("#list-name", { hasText: "maltester" }).waitFor();
+  assert.ok(await hasClass(td(other, 2014, 17), "s-watching"));
+  assert.equal(await td(other, 2014, 17).locator(".score").innerText(), "9");
+  await other.close();
+
+  await page.click("#clear-list");
+  assert.equal(await page.isVisible("#list-bar"), false);
+  assert.doesNotMatch(page.url(), /mal=/);
+  assert.ok(!(await hasClass(mahouka, "s-watching")));
+  assert.ok(!(await hasClass(mahouka, "faded")));
+
+  await page.goto(`${base}?mal=bm90LWEtbGlzdA`);
+  await page.locator("#load-error", { hasText: "This MAL list link is broken" }).waitFor();
   await page.close();
 });
