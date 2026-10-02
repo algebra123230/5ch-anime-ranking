@@ -212,7 +212,7 @@ test("MAL export: bad file error, .xml.gz upload, list kept in the URL, clear, b
   const mahouka = td(page, 2014, 17);
   assert.ok(await hasClass(mahouka, "s-watching"));
   assert.equal(await mahouka.locator(".score").innerText(), "9");
-  assert.match(await page.innerText("#list-name"), /maltester/);
+  assert.equal(await page.innerText("#list-name"), "MAL: maltester · 723 shows");
   // Sugar charted in 2001 and 2002: both cells colored, counted once.
   assert.ok(await hasClass(td(page, 2001, 18), "s-completed"));
   assert.ok(await hasClass(td(page, 2002, 3), "s-completed"));

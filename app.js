@@ -84,7 +84,8 @@ function applyState(state) {
     span.parentElement.title = summary ? `${completed} of ${size} completed` : "";
   }
   $("#list-bar").hidden = !list;
-  if (list) $("#list-name").textContent = `${sourceLabel(list)}: ${list.name}`;
+  // The total gives the per-show status counts their denominator.
+  if (list) $("#list-name").textContent = `${sourceLabel(list)}: ${list.name}${summary ? ` · ${summary.shows} shows` : ""}`;
   for (const box of document.querySelectorAll("[data-status]")) {
     box.checked = !hidden.has(box.dataset.status);
     box.parentElement.querySelector(".count").textContent = `(${summary?.counts[box.dataset.status] ?? 0})`;
