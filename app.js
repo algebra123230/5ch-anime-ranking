@@ -1,0 +1,88 @@
+// Renders the ranking table once; toolbar toggles rewrite each cell's title and link in place.
+const CONTROLS = { lang: ["ja", "romaji", "en"], links: ["mal", "anilist"] };
+let cellLinks = []; // [{ a, cell, show }], filled once the table is rendered
+
+// --- State (lives in the URL query) -------------------------------------
+
+function readState() {
+  const params = new URLSearchParams(location.search);
+  return Object.fromEntries(Object.entries(CONTROLS).map(([name, values]) =>
+    [name, values.includes(params.get(name)) ? params.get(name) : values[0]]));
+}
+
+function setControl(name, value) {
+  const state = { ...readState(), [name]: value };
+  history.replaceState(null, "", `?${new URLSearchParams(state)}`);
+  applyState(state);
+}
+
+function applyState({ lang, links }) {
+  for (const [name, value] of Object.entries({ lang, links })) {
+    for (const btn of document.querySelectorAll(`[data-control="${name}"] button`)) {
+      btn.setAttribute("aria-pressed", String(btn.dataset.value === value));
+    }
+  }
+  for (const { a, cell, show } of cellLinks) {
+    const title = { ja: cell.title_ja, romaji: show.title_romaji, en: show.title_en ?? show.title_romaji }[lang];
+    a.firstChild.textContent = title;
+    a.title = title;
+    if (lang === "ja") a.lang = "ja";
+    else a.removeAttribute("lang");
+    const useAniList = links === "anilist" && show.anilist_id;
+    a.href = useAniList ? `https://anilist.co/anime/${show.anilist_id}` : `https://myanimelist.net/anime/${cell.id}`;
+    a.classList.toggle("fallback", links === "anilist" && !show.anilist_id);
+  }
+}
+
+// --- Rendering ------------------------------------------------------------
+
+function el(tag, props = {}, children = []) {
+  const node = Object.assign(document.createElement(tag), props);
+  node.append(...children);
+  return node;
+}
+
+function rankClass(rank) {
+  if (rank <= 3) return `rank-${rank}`;
+  return rank <= 10 ? "band-a" : rank <= 20 ? "band-b" : "band-c";
+}
+
+function renderTable({ cells, anime }) {
+  const years = [...new Set(cells.map((c) => c.year))].sort((a, b) => a - b);
+  const ranks = [...new Set(cells.map((c) => c.rank))].sort((a, b) => a - b);
+  const byKey = new Map(cells.map((c) => [`${c.year}-${c.rank}`, c]));
+
+  const head = el("tr", {}, [el("th", { className: "corner" }), ...years.map((y) => el("th", { scope: "col", textContent: y }))]);
+  const rows = ranks.map((rank) => el("tr", {}, [
+    el("th", { scope: "row", className: `rank ${rankClass(rank)}`, textContent: `${rank}位` }),
+    ...years.map((year) => {
+      const cell = byKey.get(`${year}-${rank}`);
+      const a = el("a", { target: "_blank", rel: "noopener" }, [el("span")]);
+      cellLinks.push({ a, cell, show: anime[cell.id] });
+      const td = el("td", {}, [a]);
+      Object.assign(td.dataset, { year, rank });
+      return td;
+    }),
+  ]));
+  return el("table", { className: "ranking" }, [el("thead", {}, [head]), el("tbody", {}, rows)]);
+}
+
+// --- Startup ----------------------------------------------------------------
+
+for (const group of document.querySelectorAll("[data-control]")) {
+  group.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (btn) setControl(group.dataset.control, btn.dataset.value);
+  });
+}
+applyState(readState());
+
+try {
+  const res = await fetch("data/anime.json");
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  document.getElementById("table-wrap").replaceChildren(renderTable(await res.json()));
+  applyState(readState());
+} catch (err) {
+  console.error(err);
+  document.getElementById("status").textContent = "Couldn't load the ranking data. Try reloading the page.";
+}
