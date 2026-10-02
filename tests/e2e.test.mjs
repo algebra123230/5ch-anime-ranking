@@ -151,7 +151,7 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
   ].join("\n"));
   await page.click("#copy-summary");
   await page.locator("#copy-status", { hasText: "Copied." }).waitFor();
-  const post = "tester's 5ch Best Anime Ranking 2001-2025: 1/723 completed · avg 85.0/100 · top year 2014";
+  const post = "I've watched 1 of the 723 anime in 5ch's top 30 of each year (2001-2025) · average score 85.0/100 · most in 2014";
   const x = new URL(await page.getAttribute("#share-x", "href"));
   assert.equal(x.origin + x.pathname, "https://x.com/intent/post");
   assert.equal(x.searchParams.get("text"), post);
