@@ -15,6 +15,11 @@
   --band-a: #fbf3dc;
   --band-b: #fbe6e8;
   --band-c: #e4eef8;
+  --s-completed: #d9eed8;
+  --s-watching: #d8e7f6;
+  --s-on_hold: #f6ebcd;
+  --s-dropped: #f4d9d7;
+  --s-planning: #e7e3f1;
   font-family: system-ui, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
   color: var(--fg);
 }
@@ -43,7 +48,7 @@ body {
 .toolbar h1 { font-size: 16px; margin: 0; margin-right: auto; }
 
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.seg button {
+.seg button, #open-load, #clear-list {
   font: inherit;
   font-size: 13px;
   padding: 6px 12px;
@@ -71,7 +76,7 @@ body {
   border-bottom: 1px solid var(--line);
   background: var(--cell-bg);
 }
-.ranking td { background: var(--status-bg, var(--cell-bg)); }
+.ranking td { position: relative; background: var(--status-bg, var(--cell-bg)); }
 
 .ranking thead th {
   position: sticky;
@@ -134,13 +139,6 @@ body {
 
 /* --- Loaded list: status colors, faded cells, score badge --- */
 
-:root {
-  --s-completed: #d9eed8;
-  --s-watching: #d8e7f6;
-  --s-on_hold: #f6ebcd;
-  --s-dropped: #f4d9d7;
-  --s-planning: #e7e3f1;
-}
 .s-completed { --status-bg: var(--s-completed); }
 .s-watching { --status-bg: var(--s-watching); }
 .s-on_hold { --status-bg: var(--s-on_hold); }
@@ -148,7 +146,6 @@ body {
 .s-planning { --status-bg: var(--s-planning); }
 .ranking td.faded { opacity: 0.35; }
 
-.ranking td { position: relative; }
 .ranking .score {
   position: absolute;
   bottom: 3px;
@@ -165,16 +162,7 @@ body {
 
 /* --- Load list button, list bar --- */
 
-#open-load, #clear-list {
-  font: inherit;
-  font-size: 13px;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--cell-bg);
-  color: var(--fg);
-  cursor: pointer;
-}
+#open-load, #clear-list { border: 1px solid var(--line); border-radius: 8px; }
 .error { margin: 6px 0 0; color: #b42318; font-size: 13px; }
 .busy { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 

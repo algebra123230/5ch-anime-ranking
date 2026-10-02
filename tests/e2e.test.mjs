@@ -15,7 +15,8 @@ after(async () => {
   server?.close();
 });
 
-const link = (page, year, rank) => page.locator(`td[data-year="${year}"][data-rank="${rank}"] a`);
+const td = (page, year, rank) => page.locator(`td[data-year="${year}"][data-rank="${rank}"]`);
+const link = (page, year, rank) => td(page, year, rank).locator("a");
 const click = (page, control, value) => page.click(`[data-control="${control}"] button[data-value="${value}"]`);
 
 test("real data: 750 cells; title and link toggles; state survives reload", async () => {
@@ -82,7 +83,6 @@ test("data load failure shows a readable error", async () => {
   await page.close();
 });
 
-const td = (page, year, rank) => page.locator(`td[data-year="${year}"][data-rank="${rank}"]`);
 const hasClass = (locator, name) => locator.evaluate((node, name) => node.classList.contains(name), name);
 
 // Mahouka (2014 #17): MAL 20785, AniList 20458. Attack on Titan (2013 #1): MAL = AniList = 16498.
