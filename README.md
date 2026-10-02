@@ -2,6 +2,13 @@
 
 The 5ch "best anime of the year" ranking (2001-2025, top 30 per year) as an interactive table.
 
+## Your list
+
+"Load list" overlays your watch status on the chart:
+
+- AniList: enter your username or profile link. The username is kept in the page URL, so the link reloads your list.
+- MAL: export your anime list on MAL (Profile → Export My List) and choose the downloaded `.xml.gz`. The list is saved in this browser only.
+
 ## Data
 
 - `data/rankings.csv` is the source of truth: one row per cell (`year,rank,title_ja,mal_id,title_romaji`).
