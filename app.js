@@ -11,13 +11,15 @@ function readState() {
 }
 
 function setControl(name, value) {
-  const state = { ...readState(), [name]: value };
-  history.replaceState(null, "", `?${new URLSearchParams(state)}`);
-  applyState(state);
+  const params = new URLSearchParams(location.search); // keep any other params
+  params.set(name, value);
+  history.replaceState(null, "", `?${params}`);
+  applyState(readState());
 }
 
-function applyState({ lang, links }) {
-  for (const [name, value] of Object.entries({ lang, links })) {
+function applyState(state) {
+  const { lang, links } = state;
+  for (const [name, value] of Object.entries(state)) {
     for (const btn of document.querySelectorAll(`[data-control="${name}"] button`)) {
       btn.setAttribute("aria-pressed", String(btn.dataset.value === value));
     }
@@ -75,13 +77,14 @@ for (const group of document.querySelectorAll("[data-control]")) {
     if (btn) setControl(group.dataset.control, btn.dataset.value);
   });
 }
-applyState(readState());
+applyState(readState()); // toolbar buttons, before the data arrives
 
 try {
   const res = await fetch("data/anime.json");
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  document.getElementById("table-wrap").replaceChildren(renderTable(await res.json()));
-  applyState(readState());
+  const table = renderTable(await res.json());
+  applyState(readState()); // fill the cells; re-reads the URL in case a toggle was clicked during load
+  document.getElementById("table-wrap").replaceChildren(table); // last, so #status survives any error above
 } catch (err) {
   console.error(err);
   document.getElementById("status").textContent = "Couldn't load the ranking data. Try reloading the page.";

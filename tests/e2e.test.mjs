@@ -23,22 +23,23 @@ test("real data: 750 cells; title and link toggles; state survives reload", asyn
   await page.waitForSelector("table.ranking");
   assert.equal(await page.locator("td a").count(), 750);
 
-  const aot = link(page, 2013, 1);
-  assert.equal(await aot.innerText(), "進撃の巨人");
-  assert.equal(await aot.getAttribute("href"), "https://myanimelist.net/anime/16498");
+  // Mahouka: its MAL id (20785) and AniList id (20458) differ, so links can't be built from the wrong one.
+  const mahouka = link(page, 2014, 17);
+  assert.equal(await mahouka.innerText(), "魔法科高校の劣等生");
+  assert.equal(await mahouka.getAttribute("href"), "https://myanimelist.net/anime/20785");
 
   await click(page, "lang", "romaji");
-  assert.equal(await aot.innerText(), "Shingeki no Kyojin");
+  assert.equal(await mahouka.innerText(), "Mahouka Koukou no Rettousei");
   await click(page, "lang", "en");
-  assert.equal(await aot.innerText(), "Attack on Titan");
+  assert.equal(await mahouka.innerText(), "The Irregular at Magic High School");
   await click(page, "links", "anilist");
-  assert.equal(await aot.getAttribute("href"), "https://anilist.co/anime/16498");
+  assert.equal(await mahouka.getAttribute("href"), "https://anilist.co/anime/20458");
   assert.equal(await page.getAttribute('[data-control="lang"] button[data-value="en"]', "aria-pressed"), "true");
 
   await page.reload();
   await page.waitForSelector("table.ranking");
-  assert.equal(await aot.innerText(), "Attack on Titan");
-  assert.equal(await aot.getAttribute("href"), "https://anilist.co/anime/16498");
+  assert.equal(await mahouka.innerText(), "The Irregular at Magic High School");
+  assert.equal(await mahouka.getAttribute("href"), "https://anilist.co/anime/20458");
   await page.close();
 });
 
@@ -63,7 +64,7 @@ test("edge cases: literal text, English fallback, AniList fallback, bad URL para
 
   await click(page, "links", "anilist");
   assert.equal(await a.getAttribute("href"), "https://myanimelist.net/anime/1");
-  assert.equal(await a.getAttribute("class"), "fallback");
+  assert.ok(await a.evaluate((node) => node.classList.contains("fallback")));
   await page.close();
 });
 
