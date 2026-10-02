@@ -1,5 +1,6 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { gzipSync } from "node:zlib";
 import { chromium } from "playwright-core";
 import { startServer } from "./server.mjs";
 
@@ -78,5 +79,101 @@ test("data load failure shows a readable error", async () => {
   await page.goto(base);
   await page.locator("#status", { hasText: "Couldn't load the ranking data" }).waitFor();
   assert.equal(await page.locator("table.ranking").count(), 0);
+  await page.close();
+});
+
+const td = (page, year, rank) => page.locator(`td[data-year="${year}"][data-rank="${rank}"]`);
+const hasClass = (locator, name) => locator.evaluate((node, name) => node.classList.contains(name), name);
+
+// Mahouka (2014 #17): MAL 20785, AniList 20458. Attack on Titan (2013 #1): MAL = AniList = 16498.
+const ANILIST_LIST = {
+  data: {
+    MediaListCollection: {
+      user: { name: "tester", mediaListOptions: { scoreFormat: "POINT_100" } },
+      lists: [{ entries: [{ mediaId: 20458, status: "COMPLETED", score: 85 }, { mediaId: 16498, status: "DROPPED", score: 0 }] }],
+    },
+  },
+};
+
+test("AniList list: errors, profile URL, statuses, filters, scores, reload", async () => {
+  const page = await browser.newPage();
+  await page.route("https://graphql.anilist.co/**", (r) => {
+    const { name } = r.request().postDataJSON().variables;
+    return name === "tester"
+      ? r.fulfill({ json: ANILIST_LIST })
+      : r.fulfill({ status: 404, json: { errors: [{ message: "User not found", status: 404 }], data: { MediaListCollection: null } } });
+  });
+  await page.goto(`${base}?anilist=nobody`);
+  await page.locator("#load-error", { hasText: 'No AniList user named "nobody".' }).waitFor();
+
+  await page.click("#open-load");
+  await page.fill("#anilist-name", "nobody");
+  await page.click("#panel-anilist button[type=submit]");
+  await page.locator("#panel-anilist .error", { hasText: 'No AniList user named "nobody".' }).waitFor();
+
+  await page.fill("#anilist-name", "  https://anilist.co/user/tester/stats/anime/tags ");
+  await page.click("#panel-anilist button[type=submit]");
+  await page.locator("#list-bar").waitFor();
+  assert.equal(await page.locator("#load-dialog").evaluate((d) => d.open), false);
+  assert.match(page.url(), /anilist=tester/);
+
+  const mahouka = td(page, 2014, 17);
+  const aot = td(page, 2013, 1);
+  assert.ok(await hasClass(mahouka, "s-completed"));
+  assert.equal(await mahouka.locator(".score").innerText(), "85");
+  assert.ok(await hasClass(aot, "s-dropped"));
+  assert.equal(await aot.locator(".score").innerText(), "");
+  assert.ok(await hasClass(td(page, 2001, 1), "faded"));
+  assert.match(await page.locator("label", { has: page.locator('[data-status="completed"]') }).innerText(), /\(1\)/);
+
+  await page.uncheck('[data-status="completed"]');
+  assert.ok(await hasClass(mahouka, "faded"));
+  assert.ok(!(await hasClass(mahouka, "s-completed")));
+  await page.uncheck("#show-scores");
+  await page.check('[data-status="completed"]');
+  assert.equal(await mahouka.locator(".score").innerText(), "");
+
+  await page.reload();
+  await page.locator("#list-bar").waitFor();
+  assert.ok(await hasClass(mahouka, "s-completed"));
+  assert.ok(await hasClass(aot, "s-dropped"));
+  assert.equal(await page.isChecked("#show-scores"), false);
+  await page.close();
+});
+
+const MAL_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<myanimelist>
+  <myinfo><user_name>maltester</user_name></myinfo>
+  <anime><series_animedb_id>20785</series_animedb_id><my_score>9</my_score><my_status>Watching</my_status></anime>
+</myanimelist>`;
+
+test("MAL export: bad file error, .xml.gz upload, saved across reload, clear", async () => {
+  const page = await browser.newPage();
+  await page.goto(base);
+  await page.waitForSelector("table.ranking");
+
+  await page.click("#open-load");
+  await page.click("#tab-mal");
+  await page.setInputFiles("#mal-file", { name: "notes.xml", mimeType: "text/xml", buffer: Buffer.from("<notes/>") });
+  await page.locator("#panel-mal .error", { hasText: "This file isn't a MAL export" }).waitFor();
+
+  await page.setInputFiles("#mal-file", { name: "animelist.xml.gz", mimeType: "application/gzip", buffer: gzipSync(MAL_XML) });
+  await page.locator("#list-bar").waitFor();
+  const mahouka = td(page, 2014, 17);
+  assert.ok(await hasClass(mahouka, "s-watching"));
+  assert.equal(await mahouka.locator(".score").innerText(), "9");
+  assert.match(await page.innerText("#list-name"), /maltester/);
+
+  await page.reload();
+  await page.locator("#list-bar").waitFor();
+  assert.ok(await hasClass(mahouka, "s-watching"));
+
+  await page.click("#clear-list");
+  assert.equal(await page.isVisible("#list-bar"), false);
+  assert.ok(!(await hasClass(mahouka, "s-watching")));
+  assert.ok(!(await hasClass(mahouka, "faded")));
+  await page.reload();
+  await page.waitForSelector("table.ranking");
+  assert.equal(await page.isVisible("#list-bar"), false);
   await page.close();
 });
