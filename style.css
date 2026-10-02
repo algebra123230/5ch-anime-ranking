@@ -69,7 +69,7 @@ body {
   padding: 0;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: var(--cell-bg);
+  background: var(--status-bg, var(--cell-bg));
 }
 
 .ranking thead th {
@@ -110,7 +110,7 @@ body {
   font-size: 13px;
   line-height: 1.3;
 }
-.ranking td a:hover { background: #f0f4fa; }
+.ranking td a:hover { background: rgb(0 0 0 / 0.04); } /* translucent: keeps the status color */
 
 .ranking td span {
   display: -webkit-box;
@@ -129,4 +129,110 @@ body {
   right: 3px;
   font-size: 9px;
   color: var(--muted);
+}
+
+/* --- Loaded list: status colors, faded cells, score badge --- */
+
+:root {
+  --s-completed: #d9eed8;
+  --s-watching: #d8e7f6;
+  --s-on_hold: #f6ebcd;
+  --s-dropped: #f4d9d7;
+  --s-planning: #e7e3f1;
+}
+.s-completed { --status-bg: var(--s-completed); }
+.s-watching { --status-bg: var(--s-watching); }
+.s-on_hold { --status-bg: var(--s-on_hold); }
+.s-dropped { --status-bg: var(--s-dropped); }
+.s-planning { --status-bg: var(--s-planning); }
+.ranking td.faded { opacity: 0.35; }
+
+.ranking td { position: relative; }
+.ranking .score {
+  position: absolute;
+  bottom: 3px;
+  right: 4px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  pointer-events: none;
+}
+.ranking .score:empty { display: none; }
+
+/* --- Load list button, list bar --- */
+
+#open-load, #clear-list {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--cell-bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+.error { margin: 6px 0 0; color: #b42318; font-size: 13px; }
+#load-error { margin: 0; flex-basis: 100%; text-align: right; }
+
+.list-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.list-bar[hidden] { display: none; }
+#list-name { font-weight: 600; }
+.list-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--status-bg, transparent);
+  cursor: pointer;
+}
+#clear-list { margin-left: auto; }
+
+/* --- Load dialog (bottom sheet on phones) --- */
+
+dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.2);
+  color: var(--fg);
+  background: var(--cell-bg);
+}
+dialog::backdrop { background: rgb(0 0 0 / 0.35); backdrop-filter: blur(2px); }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.dialog-head h2 { font-size: 17px; margin: 0; }
+.close { font-size: 22px; line-height: 1; border: 0; background: none; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.tabs button {
+  font: inherit;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+}
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+dialog label { display: block; font-size: 13px; margin-bottom: 6px; }
+dialog p { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
+dialog .row { display: flex; gap: 8px; }
+dialog input:not([type=file]) { flex: 1; min-width: 0; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+dialog button[type=submit] { font: inherit; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+dialog button[type=submit]:disabled { opacity: 0.6; cursor: progress; }
+
+@media (max-width: 600px) {
+  dialog { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 12px 12px 0 0; }
+  dialog input:not([type=file]), dialog button, #open-load { min-height: 44px; }
 }
