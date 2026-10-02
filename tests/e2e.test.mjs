@@ -138,9 +138,9 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
   await page.uncheck('[data-status="dropped"]');
 
   await page.reload();
-  await page.locator("#open-load:disabled", { hasText: "Loading list…" }).waitFor();
+  await page.locator("#load-status", { hasText: "Loading tester's AniList list…" }).waitFor();
   await page.locator("#list-bar").waitFor();
-  assert.equal(await page.innerText("#open-load"), "Load list");
+  assert.equal(await page.isVisible("#load-status"), false);
   assert.ok(await hasClass(mahouka, "s-completed"));
   assert.ok(await hasClass(aot, "faded"));
   assert.equal(await page.isChecked('[data-status="dropped"]'), false);

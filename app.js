@@ -223,7 +223,7 @@ function wireListBar() {
 async function restoreList() {
   const name = new URLSearchParams(location.search).get("anilist");
   const loaded = name
-    ? await whileBusy($("#open-load"), "Loading list…", () => tryLoad($("#load-error"), () => loadAniList(name)))
+    ? await whileBusy($("#load-status"), `Loading ${name}'s AniList list…`, () => tryLoad($("#load-error"), () => loadAniList(name)))
     : loadSavedMalList();
   if (loaded && !list) { // the viewer may have loaded a list while this one was loading
     list = loaded;
