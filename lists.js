@@ -1,4 +1,4 @@
-// Loads a viewer's anime list from AniList (by username) or a MAL export file into one shape:
+// Loads a viewer's anime list from AniList (by username), a MAL export file, or a `?mal=` link code into one shape:
 //   { source: "anilist" | "mal", name, scoreFormat, entries: Map<malId, { status, score }> }
 // score is null when unscored.
 
@@ -96,7 +96,7 @@ export function formatScore(score, scoreFormat) {
   return String(score);
 }
 
-// A MAL list travels in the page URL as one deflated, base64url code:
+// The `?mal=` URL param stores a MAL list as one code, deflate-raw compressed and base64url encoded:
 //   UTF-8 user name, 0x00, then one byte per chart show (0 = not on list, else 1 + status * 11 + score 0-10).
 // Shows are in order of first appearance in `cells` (sorted by year, then rank), so adding a new year
 // appends shows and old links stay valid. Shows past the end of a code are not on the list.

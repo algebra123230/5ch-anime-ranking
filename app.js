@@ -138,7 +138,7 @@ function showError(node, message) {
   node.hidden = !message;
 }
 
-// Shows label on node (a button, or a hidden note) and disables it while run() is pending.
+// Shows label on node (a button, or a hidden status line) and disables it while run() is pending.
 async function whileBusy(node, label, run) {
   const { textContent, hidden } = node;
   Object.assign(node, { textContent: label, hidden: false, disabled: true });
