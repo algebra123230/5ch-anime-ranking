@@ -55,11 +55,11 @@ export function summaryText({ shows, counts, byYear, average }, list, url) {
   ].filter(Boolean).join("\n");
 }
 
-// One line for social posts, in the sharer's voice; the link is passed separately. "Watched" counts completed shows.
-export function postText({ shows, counts, byYear, average }) {
+// One line for social posts; the link is passed separately. "Watched" counts completed shows.
+export function postText({ shows, counts, byYear, average }, list) {
   const { range, topYears } = highlights(byYear);
   return [
-    `I've watched ${counts.completed} of the ${shows} anime in 5ch's top 30 of each year (${range})`,
+    `${list.name} watched ${counts.completed} of the ${shows} anime in 5ch's top 30 of each year (${range})`,
     average && `average score ${formatAverage(average)}`,
     topYears.length && `most in ${topYears.join(", ")}`,
   ].filter(Boolean).join(" · ");

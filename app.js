@@ -220,7 +220,7 @@ function wireSummary() {
   let post = null; // { text, url } for the share buttons
   $("#open-summary").addEventListener("click", () => {
     const summary = summarize(list, view.cells);
-    post = { text: postText(summary), url: location.href };
+    post = { text: postText(summary, list), url: location.href };
     $("#summary-text").value = summaryText(summary, list, post.url);
     $("#share-x").href = `https://x.com/intent/post?${new URLSearchParams(post)}`;
     $("#share-bluesky").href = `https://bsky.app/intent/compose?${new URLSearchParams({ text: `${post.text} ${post.url}` })}`;
