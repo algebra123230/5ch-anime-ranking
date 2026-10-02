@@ -1,0 +1,132 @@
+:root {
+  --cell-w: 128px;
+  --cell-h: 76px;
+  --rank-w: 56px;
+  --bg: #f7f7f5;
+  --fg: #1f1f1f;
+  --muted: #6b6b6b;
+  --line: #dcdcd8;
+  --cell-bg: #ffffff;
+  --head-bg: #efefec;
+  --accent: #3b6ea8;
+  --rank-1: #f3dd8e;
+  --rank-2: #dfe2e6;
+  --rank-3: #ecc9a6;
+  --band-a: #fbf3dc;
+  --band-b: #fbe6e8;
+  --band-c: #e4eef8;
+  font-family: system-ui, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+  color: var(--fg);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* --- Toolbar --- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.toolbar h1 { font-size: 16px; margin: 0; margin-right: auto; }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border: 0;
+  background: var(--cell-bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* --- Table: fixed-size cells, sticky year header and rank column --- */
+
+#table-wrap { flex: 1; min-height: 0; overflow: auto; }
+#status { padding: 16px; color: var(--muted); }
+
+.ranking { border-collapse: separate; border-spacing: 0; }
+
+.ranking th, .ranking td {
+  width: var(--cell-w);
+  min-width: var(--cell-w);
+  height: var(--cell-h);
+  padding: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--cell-bg);
+}
+
+.ranking thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 32px;
+  background: var(--head-bg);
+  font-size: 14px;
+}
+
+.ranking .rank, .ranking .corner {
+  position: sticky;
+  left: 0;
+  width: var(--rank-w);
+  min-width: var(--rank-w);
+}
+.ranking .rank { z-index: 1; font-size: 15px; }
+.ranking .corner { z-index: 3; }
+
+.rank-1 { --rank-bg: var(--rank-1); }
+.rank-2 { --rank-bg: var(--rank-2); }
+.rank-3 { --rank-bg: var(--rank-3); }
+.band-a { --rank-bg: var(--band-a); }
+.band-b { --rank-bg: var(--band-b); }
+.band-c { --rank-bg: var(--band-c); }
+.ranking .rank { background: var(--rank-bg); }
+
+.ranking td a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 4px 6px;
+  color: inherit;
+  text-decoration: none;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.ranking td a:hover { background: #f0f4fa; }
+
+.ranking td span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* AniList mode, show has no AniList entry: link goes to MAL instead. */
+.ranking td a.fallback { position: relative; }
+.ranking td a.fallback::after {
+  content: "MAL";
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 9px;
+  color: var(--muted);
+}

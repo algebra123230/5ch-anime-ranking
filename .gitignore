@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local working files (source images, scripts, intermediate data)
+tmp/
+
+# Node (dev-only test dependencies)
+node_modules/
+
+# Git worktrees
+.worktrees/
+
+# Local design notes (specs, plans)
+docs/superpowers/
