@@ -26,10 +26,14 @@ test("real data: 750 cells; title and link toggles; state survives reload", asyn
   // Mahouka: its MAL id (20785) and AniList id (20458) differ, so links can't be built from the wrong one.
   const mahouka = link(page, 2014, 17);
   assert.equal(await mahouka.innerText(), "魔法科高校の劣等生");
+  assert.equal(await page.innerText("h1"), "5ch ベストアニメランキング");
+  assert.equal(await page.innerText('th[data-rank="3"]'), "3位");
   assert.equal(await mahouka.getAttribute("href"), "https://myanimelist.net/anime/20785");
 
   await click(page, "lang", "romaji");
   assert.equal(await mahouka.innerText(), "Mahouka Koukou no Rettousei");
+  assert.equal(await page.innerText("h1"), "5ch Best Anime Ranking");
+  assert.equal(await page.innerText('th[data-rank="3"]'), "3");
   await click(page, "lang", "en");
   assert.equal(await mahouka.innerText(), "The Irregular at Magic High School");
   await click(page, "links", "anilist");

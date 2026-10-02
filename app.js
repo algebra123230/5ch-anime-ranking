@@ -1,6 +1,8 @@
 // Renders the ranking table once; toolbar toggles rewrite each cell's title and link in place.
 const CONTROLS = { lang: ["ja", "romaji", "en"], links: ["mal", "anilist"] };
-let cellLinks = []; // [{ a, cell, show }], filled once the table is rendered
+// Filled by renderTable; applyState rewrites them (they may not be in the document yet).
+const cellLinks = []; // [{ a, cell, show }]
+const rankHeaders = []; // <th> per rank
 
 // --- State (lives in the URL query) -------------------------------------
 
@@ -17,19 +19,32 @@ function setControl(name, value) {
   applyState(readState());
 }
 
+// Japanese text gets lang="ja" so browsers pick a Japanese (not Chinese) font.
+function setLang(node, ja) {
+  if (ja) node.lang = "ja";
+  else node.removeAttribute("lang");
+}
+
 function applyState(state) {
   const { lang, links } = state;
+  const ja = lang === "ja";
   for (const [name, value] of Object.entries(state)) {
     for (const btn of document.querySelectorAll(`[data-control="${name}"] button`)) {
       btn.setAttribute("aria-pressed", String(btn.dataset.value === value));
     }
   }
+  const h1 = document.querySelector("h1");
+  h1.textContent = ja ? "5ch ベストアニメランキング" : "5ch Best Anime Ranking";
+  setLang(h1, ja);
+  for (const th of rankHeaders) {
+    th.textContent = ja ? `${th.dataset.rank}位` : th.dataset.rank;
+    setLang(th, ja);
+  }
   for (const { a, cell, show } of cellLinks) {
     const title = { ja: cell.title_ja, romaji: show.title_romaji, en: show.title_en ?? show.title_romaji }[lang];
     a.firstChild.textContent = title;
     a.title = title;
-    if (lang === "ja") a.lang = "ja";
-    else a.removeAttribute("lang");
+    setLang(a, ja);
     const useAniList = links === "anilist" && show.anilist_id;
     a.href = useAniList ? `https://anilist.co/anime/${show.anilist_id}` : `https://myanimelist.net/anime/${cell.id}`;
     a.classList.toggle("fallback", links === "anilist" && !show.anilist_id);
@@ -49,6 +64,13 @@ function rankClass(rank) {
   return rank <= 10 ? "band-a" : rank <= 20 ? "band-b" : "band-c";
 }
 
+function rankHeader(rank) {
+  const th = el("th", { scope: "row", className: `rank ${rankClass(rank)}` });
+  th.dataset.rank = rank;
+  rankHeaders.push(th);
+  return th;
+}
+
 function renderTable({ cells, anime }) {
   const years = [...new Set(cells.map((c) => c.year))].sort((a, b) => a - b);
   const ranks = [...new Set(cells.map((c) => c.rank))].sort((a, b) => a - b);
@@ -56,7 +78,7 @@ function renderTable({ cells, anime }) {
 
   const head = el("tr", {}, [el("th", { className: "corner" }), ...years.map((y) => el("th", { scope: "col", textContent: y }))]);
   const rows = ranks.map((rank) => el("tr", {}, [
-    el("th", { scope: "row", className: `rank ${rankClass(rank)}`, textContent: rank }),
+    rankHeader(rank),
     ...years.map((year) => {
       const cell = byKey.get(`${year}-${rank}`);
       const a = el("a", { target: "_blank", rel: "noopener" }, [el("span")]);
