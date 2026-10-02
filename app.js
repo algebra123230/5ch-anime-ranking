@@ -135,6 +135,17 @@ function showError(node, message) {
   node.hidden = !message;
 }
 
+// Shows label on node (a button, or a hidden note) and disables it while run() is pending.
+async function whileBusy(node, label, run) {
+  const { textContent, hidden } = node;
+  Object.assign(node, { textContent: label, hidden: false, disabled: true });
+  try {
+    return await run();
+  } finally {
+    Object.assign(node, { textContent, hidden, disabled: false });
+  }
+}
+
 // Runs load(); returns its list, or null after showing the error in errorNode.
 async function tryLoad(errorNode, load) {
   showError(errorNode, "");
@@ -168,9 +179,8 @@ function wireDialog() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const submit = form.querySelector("button[type=submit]");
-    submit.disabled = true;
-    const loaded = await tryLoad(form.querySelector(".error"), () => loadAniList(parseAniListUser($("#anilist-name").value)));
-    submit.disabled = false;
+    const loaded = await whileBusy(submit, "Loading…", () =>
+      tryLoad(form.querySelector(".error"), () => loadAniList(parseAniListUser($("#anilist-name").value))));
     if (!loaded) return;
     list = loaded;
     clearSavedMalList();
@@ -182,7 +192,8 @@ function wireDialog() {
     const file = e.target.files[0];
     e.target.value = ""; // allow picking the same file again after an error
     if (!file) return;
-    const loaded = await tryLoad($("#panel-mal .error"), () => parseMalFile(file));
+    const loaded = await whileBusy($("#panel-mal .busy"), "Reading file…", () =>
+      tryLoad($("#panel-mal .error"), () => parseMalFile(file)));
     if (!loaded) return;
     list = loaded;
     saveMalList(loaded);
@@ -211,7 +222,9 @@ function wireListBar() {
 // On page load: the AniList user in the URL, else a MAL list saved in this browser.
 async function restoreList() {
   const name = new URLSearchParams(location.search).get("anilist");
-  const loaded = name ? await tryLoad($("#load-error"), () => loadAniList(name)) : loadSavedMalList();
+  const loaded = name
+    ? await whileBusy($("#open-load"), "Loading list…", () => tryLoad($("#load-error"), () => loadAniList(name)))
+    : loadSavedMalList();
   if (loaded && !list) { // the viewer may have loaded a list while this one was loading
     list = loaded;
     applyState(readState());

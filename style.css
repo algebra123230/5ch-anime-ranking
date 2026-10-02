@@ -176,6 +176,8 @@ body {
   cursor: pointer;
 }
 .error { margin: 6px 0 0; color: #b42318; font-size: 13px; }
+.busy { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+#open-load:disabled { cursor: progress; color: var(--muted); }
 #load-error { margin: 0; flex-basis: 100%; text-align: right; }
 
 .list-bar {

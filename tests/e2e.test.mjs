@@ -97,11 +97,13 @@ const ANILIST_LIST = {
 
 test("AniList list: errors, profile URL, statuses, filters, scores, reload", async () => {
   const page = await browser.newPage();
-  await page.route("https://graphql.anilist.co/**", (r) => {
+  await page.route("https://graphql.anilist.co/**", async (r) => {
     const { name } = r.request().postDataJSON().variables;
-    return name === "tester"
-      ? r.fulfill({ json: ANILIST_LIST })
-      : r.fulfill({ status: 404, json: { errors: [{ message: "User not found", status: 404 }], data: { MediaListCollection: null } } });
+    if (name !== "tester") {
+      return r.fulfill({ status: 404, json: { errors: [{ message: "User not found", status: 404 }], data: { MediaListCollection: null } } });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500)); // long enough to see the loading state
+    return r.fulfill({ json: ANILIST_LIST });
   });
   await page.goto(`${base}?anilist=nobody`);
   await page.locator("#load-error", { hasText: 'No AniList user named "nobody".' }).waitFor();
@@ -136,7 +138,9 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
   await page.uncheck('[data-status="dropped"]');
 
   await page.reload();
+  await page.locator("#open-load:disabled", { hasText: "Loading list…" }).waitFor();
   await page.locator("#list-bar").waitFor();
+  assert.equal(await page.innerText("#open-load"), "Load list");
   assert.ok(await hasClass(mahouka, "s-completed"));
   assert.ok(await hasClass(aot, "faded"));
   assert.equal(await page.isChecked('[data-status="dropped"]'), false);
