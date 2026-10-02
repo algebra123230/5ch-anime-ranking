@@ -59,20 +59,19 @@ def update_cache(ids):
 
 
 def main():
-    rows = list(csv.DictReader((DATA / "rankings.csv").read_text(encoding="utf-8").splitlines()))
-    keys = [(int(r["year"]), int(r["rank"])) for r in rows]
-    if sorted(keys) != [(y, r) for y in YEARS for r in RANKS]:
-        sys.exit(f"rankings.csv must have exactly one row per year {YEARS[0]}-{YEARS[-1]} x rank {RANKS[0]}-{RANKS[-1]}")
-    titles = {}
+    rows = csv.DictReader((DATA / "rankings.csv").read_text(encoding="utf-8").splitlines())
+    cells, titles = [], {}
     for r in rows:
-        first = titles.setdefault(r["mal_id"], r["title_romaji"])
+        cells.append({"year": int(r["year"]), "rank": int(r["rank"]), "id": int(r["mal_id"]), "title_ja": r["title_ja"]})
+        first = titles.setdefault(int(r["mal_id"]), r["title_romaji"])
         if first != r["title_romaji"]:
             sys.exit(f"mal_id {r['mal_id']} has two romaji titles: {first!r}, {r['title_romaji']!r}")
+    cells.sort(key=lambda c: (c["year"], c["rank"]))
+    if [(c["year"], c["rank"]) for c in cells] != [(y, r) for y in YEARS for r in RANKS]:
+        sys.exit(f"rankings.csv must have exactly one row per year {YEARS[0]}-{YEARS[-1]} x rank {RANKS[0]}-{RANKS[-1]}")
 
-    cache = update_cache({int(i) for i in titles})
-    cells = sorted(({"year": int(r["year"]), "rank": int(r["rank"]), "id": int(r["mal_id"]), "title_ja": r["title_ja"]}
-                    for r in rows), key=lambda c: (c["year"], c["rank"]))
-    anime = {i: {"title_romaji": t, **cache[i]} for i, t in sorted(titles.items(), key=lambda kv: int(kv[0]))}
+    cache = update_cache(titles)
+    anime = {str(i): {"title_romaji": t, **cache[str(i)]} for i, t in sorted(titles.items())}
     out = json.dumps({"cells": cells, "anime": anime}, ensure_ascii=False, separators=(",", ":"))
     (DATA / "anime.json").write_text(out + "\n", encoding="utf-8")
     unmatched = [i for i, a in anime.items() if a["anilist_id"] is None]
