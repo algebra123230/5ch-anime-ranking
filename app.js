@@ -1,11 +1,12 @@
 // Renders the ranking table once; applyState redraws every cell from the URL state and the loaded list.
 import {
-  STATUSES, ListError, parseAniListUser, loadAniList, parseMalFile, formatScore, encodeMalList, decodeMalList,
+  STATUSES, ListError, parseAniListUser, loadAniList, parseMalFile, formatScore, encodeMalList, decodeMalList, sourceLabel,
 } from "./lists.js";
+import { summarize, summaryText, postText } from "./summary.js";
 
 const CONTROLS = { lang: ["ja", "romaji", "en"], links: ["mal", "anilist"] };
 // Elements applyState rewrites; set from renderTable's result (may not be in the document yet).
-let view = { cellViews: [], rankHeaders: [] };
+let view = { cells: [], cellViews: [], rankHeaders: [], yearCounts: new Map() };
 let list = null; // the list named by the URL (?anilist= or ?mal=, see lists.js) once loaded, or null
 const data = fetch("data/anime.json").then((res) => {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -61,8 +62,6 @@ function applyState(state) {
     setLang(th, ja);
   }
 
-  const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]));
-  const counted = new Set(); // count a show once, even if it charted in several years
   for (const { td, a, badge, cell, show } of view.cellViews) {
     const title = { ja: cell.title_ja, romaji: show.title_romaji, en: show.title_en ?? show.title_romaji }[lang];
     a.firstChild.textContent = title;
@@ -73,21 +72,25 @@ function applyState(state) {
     a.classList.toggle("fallback", links === "anilist" && !anilistId);
 
     const entry = list?.entries.get(cell.id);
-    if (entry && !counted.has(cell.id)) {
-      counted.add(cell.id);
-      counts[entry.status]++;
-    }
     const shown = entry && !hidden.has(entry.status);
     td.className = shown ? `s-${entry.status}` : list ? "faded" : "";
     badge.textContent = shown && scores ? formatScore(entry.score, list.scoreFormat) : "";
   }
 
+  const summary = list && view.cells.length ? summarize(list, view.cells) : null; // null until the list and data both load
+  for (const [year, span] of view.yearCounts) {
+    const { completed, size } = summary?.byYear.get(year) ?? {};
+    span.textContent = summary ? `${completed}/${size}` : "";
+    span.parentElement.title = summary ? `${completed} of ${size} completed` : "";
+  }
   $("#list-bar").hidden = !list;
-  if (list) $("#list-name").textContent = `${list.source === "anilist" ? "AniList" : "MAL"}: ${list.name}`;
+  // The total gives the per-show status counts their denominator.
+  if (list) $("#list-name").textContent = `${sourceLabel(list)}: ${list.name}${summary ? ` · ${summary.shows} shows` : ""}`;
   for (const box of document.querySelectorAll("[data-status]")) {
     box.checked = !hidden.has(box.dataset.status);
-    box.parentElement.querySelector(".count").textContent = `(${counts[box.dataset.status]})`;
+    box.parentElement.querySelector(".count").textContent = `(${summary?.counts[box.dataset.status] ?? 0})`;
   }
+  $("#open-summary").disabled = !summary;
   $("#show-scores").checked = scores;
 }
 
@@ -111,8 +114,15 @@ function renderTable({ cells, anime }) {
   const byKey = new Map(cells.map((c) => [`${c.year}-${c.rank}`, c]));
   const cellViews = [];
   const rankHeaders = [];
+  const yearCounts = new Map();
 
-  const head = el("tr", {}, [el("th", { className: "corner" }), ...years.map((y) => el("th", { scope: "col", textContent: y }))]);
+  const head = el("tr", {}, [el("th", { className: "corner" }), ...years.map((year) => {
+    const count = el("span", { className: "year-count" });
+    yearCounts.set(year, count);
+    const th = el("th", { scope: "col" }, [String(year), count]);
+    th.dataset.year = year;
+    return th;
+  })]);
   const rows = ranks.map((rank) => {
     const th = el("th", { scope: "row", className: `rank ${rankClass(rank)}` });
     th.dataset.rank = rank;
@@ -128,7 +138,7 @@ function renderTable({ cells, anime }) {
     })]);
   });
   const table = el("table", { className: "ranking" }, [el("thead", {}, [head]), el("tbody", {}, rows)]);
-  return { table, cellViews, rankHeaders };
+  return { table, cells, cellViews, rankHeaders, yearCounts };
 }
 
 // --- Loading a list ---------------------------------------------------------
@@ -176,7 +186,6 @@ function wireDialog() {
     for (const node of document.querySelectorAll("#load-error, #load-dialog .error")) showError(node, "");
     dialog.showModal();
   });
-  dialog.querySelector(".close").addEventListener("click", () => dialog.close());
 
   const form = $("#panel-anilist");
   form.addEventListener("submit", async (e) => {
@@ -203,6 +212,32 @@ function wireDialog() {
     list = loaded.list;
     updateUrl({ mal: loaded.code, anilist: null });
     dialog.close();
+  });
+}
+
+function wireSummary() {
+  const dialog = $("#summary-dialog");
+  const status = $("#copy-status");
+  let post = null; // { text, url } for the share buttons
+  $("#open-summary").addEventListener("click", () => {
+    const summary = summarize(list, view.cells);
+    post = { text: postText(summary, list), url: location.href };
+    $("#summary-text").value = summaryText(summary, list, post.url);
+    $("#share-x").href = `https://x.com/intent/post?${new URLSearchParams(post)}`;
+    $("#share-bluesky").href = `https://bsky.app/intent/compose?${new URLSearchParams({ text: `${post.text} ${post.url}` })}`;
+    status.textContent = "";
+    dialog.showModal();
+  });
+  // The system share sheet (mostly phones) reaches apps without a web share link: Instagram, Discord, LINE, Messages.
+  $("#share-native").hidden = !navigator.share;
+  $("#share-native").addEventListener("click", () => navigator.share(post).catch(() => {})); // rejects when the viewer cancels
+  $("#copy-summary").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText($("#summary-text").value); // clipboard is undefined on insecure origins
+      status.textContent = "Copied.";
+    } catch {
+      status.textContent = "Couldn't copy. Select the text and copy it.";
+    }
   });
 }
 
@@ -248,7 +283,11 @@ for (const group of document.querySelectorAll("[data-control]")) {
     if (btn) updateUrl({ [group.dataset.control]: btn.dataset.value });
   });
 }
+for (const dialog of document.querySelectorAll("dialog")) {
+  dialog.querySelector(".close").addEventListener("click", () => dialog.close());
+}
 wireDialog();
+wireSummary();
 wireListBar();
 applyState(readState()); // toolbar buttons, before the data arrives
 restoreList(); // runs alongside the data load; both redraw, so either may finish first

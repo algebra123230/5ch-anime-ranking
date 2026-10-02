@@ -48,7 +48,7 @@ body {
 .toolbar h1 { font-size: 16px; margin: 0; margin-right: auto; }
 
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.seg button, #open-load, #clear-list {
+.seg button, #open-load, #open-summary, #clear-list {
   font: inherit;
   font-size: 13px;
   padding: 6px 12px;
@@ -77,6 +77,9 @@ body {
   background: var(--cell-bg);
 }
 .ranking td { position: relative; background: var(--status-bg, var(--cell-bg)); }
+
+.ranking .year-count { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
+.ranking .year-count:empty { display: none; }
 
 .ranking thead th {
   position: sticky;
@@ -162,7 +165,9 @@ body {
 
 /* --- Load list button, list bar --- */
 
-#open-load, #clear-list { border: 1px solid var(--line); border-radius: 8px; }
+#open-load, #open-summary, #clear-list { border: 1px solid var(--line); border-radius: 8px; }
+#open-summary { margin-left: auto; }
+#open-summary:disabled { opacity: 0.5; cursor: default; }
 .error { margin: 6px 0 0; color: #b42318; font-size: 13px; }
 .busy { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 
@@ -204,7 +209,6 @@ body {
   background: var(--status-bg, transparent);
   cursor: pointer;
 }
-#clear-list { margin-left: auto; }
 
 /* --- Load dialog (bottom sheet on phones) --- */
 
@@ -236,10 +240,15 @@ dialog label { display: block; font-size: 13px; margin-bottom: 6px; }
 dialog p { font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
 dialog .row { display: flex; gap: 8px; }
 dialog input:not([type=file]) { flex: 1; min-width: 0; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
-dialog button[type=submit] { font: inherit; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+dialog button[type=submit], #copy-summary { font: inherit; padding: 8px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+#summary-text { width: 100%; margin-bottom: 8px; padding: 8px 10px; font: inherit; font-size: 16px; line-height: 1.5; border: 1px solid var(--line); border-radius: 8px; resize: vertical; } /* iOS zooms into text fields under 16px */
+.share-row { flex-wrap: wrap; }
+.share { font: inherit; font-size: 14px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--cell-bg); color: var(--fg); text-decoration: none; cursor: pointer; }
+#copy-status { margin: 8px 0 0; color: var(--muted); }
+#copy-status:empty { display: none; }
 dialog button[type=submit]:disabled { opacity: 0.6; cursor: progress; }
 
 @media (max-width: 600px) {
   dialog { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 12px 12px 0 0; }
-  dialog input:not([type=file]), dialog button, #open-load { min-height: 44px; }
+  dialog input:not([type=file]), dialog button, #open-load, #open-summary, #clear-list { min-height: 44px; }
 }
