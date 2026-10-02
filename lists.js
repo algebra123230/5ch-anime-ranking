@@ -1,6 +1,6 @@
 // Loads a viewer's anime list from AniList (by username) or a MAL export file into one shape:
-//   { source: "anilist" | "mal", name, scoreFormat, entries: Map<id, { status, score }> }
-// AniList lists are keyed by AniList id, MAL lists by MAL id. score is null when unscored.
+//   { source: "anilist" | "mal", name, scoreFormat, entries: Map<malId, { status, score }> }
+// score is null when unscored.
 
 export const STATUSES = ["completed", "watching", "on_hold", "dropped", "planning"];
 
@@ -13,7 +13,7 @@ const MAL_STATUS = {
   "Dropped": "dropped", "Plan to Watch": "planning",
 };
 const MAL_FILE_ERROR = "This file isn't a MAL export. Upload the .xml or .xml.gz from MAL's Export page.";
-const SAVED_KEY = "malList";
+const MAL_LINK_ERROR = "This MAL list link is broken. Load the export file again.";
 
 // Message is shown to the viewer as-is.
 export class ListError extends Error {}
@@ -30,7 +30,7 @@ export function parseAniListUser(input) {
 const QUERY = `query ($name: String) {
   MediaListCollection(userName: $name, type: ANIME) {
     user { name mediaListOptions { scoreFormat } }
-    lists { entries { mediaId status score } }
+    lists { entries { status score media { idMal } } }
   }
 }`;
 
@@ -54,11 +54,12 @@ export async function loadAniList(name) {
   if (!collection) throw new ListError(`AniList error: ${message || `HTTP ${res.status}`}`);
 
   // A show in a custom list appears in several lists with the same status; the Map dedupes it.
+  // Shows without a MAL id are dropped: every chart show has one.
   const entries = new Map();
   for (const list of collection.lists) {
     for (const e of list.entries) {
       const status = ANILIST_STATUS[e.status];
-      if (status) entries.set(e.mediaId, { status, score: e.score || null });
+      if (status && e.media.idMal) entries.set(e.media.idMal, { status, score: e.score || null });
     }
   }
   return { source: "anilist", name: collection.user.name, scoreFormat: collection.user.mediaListOptions.scoreFormat, entries };
@@ -95,24 +96,42 @@ export function formatScore(score, scoreFormat) {
   return String(score);
 }
 
-// localStorage can throw (private mode, blocked storage); the list then just isn't remembered.
-export function saveMalList(list) {
-  try {
-    localStorage.setItem(SAVED_KEY, JSON.stringify({ ...list, entries: [...list.entries] }));
-  } catch {}
+// A MAL list travels in the page URL as one deflated, base64url code:
+//   UTF-8 user name, 0x00, then one byte per chart show (0 = not on list, else 1 + status * 11 + score 0-10).
+// Shows are in order of first appearance in `cells` (sorted by year, then rank), so adding a new year
+// appends shows and old links stay valid. Shows past the end of a code are not on the list.
+function chartShows(cells) {
+  return [...new Set(cells.map((c) => c.id))];
 }
 
-export function loadSavedMalList() {
+export async function encodeMalList(list, cells) {
+  const symbols = chartShows(cells).map((id) => {
+    const e = list.entries.get(id);
+    if (!e) return 0;
+    const score = Number.isInteger(e.score) && e.score <= 10 ? e.score : 0;
+    return 1 + STATUSES.indexOf(e.status) * 11 + score;
+  });
+  const bytes = new Uint8Array([...new TextEncoder().encode(list.name), 0, ...symbols]);
+  const packed = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer());
+  return btoa(String.fromCharCode(...packed)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export async function decodeMalList(code, cells) {
+  let bytes;
   try {
-    const saved = JSON.parse(localStorage.getItem(SAVED_KEY));
-    return saved && { ...saved, entries: new Map(saved.entries) };
+    const packed = Uint8Array.from(atob(code.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    bytes = new Uint8Array(await new Response(new Blob([packed]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
   } catch {
-    return null;
+    throw new ListError(MAL_LINK_ERROR);
   }
-}
-
-export function clearSavedMalList() {
-  try {
-    localStorage.removeItem(SAVED_KEY);
-  } catch {}
+  const split = bytes.indexOf(0);
+  if (split < 0) throw new ListError(MAL_LINK_ERROR);
+  const entries = new Map();
+  for (const [i, id] of chartShows(cells).entries()) {
+    const symbol = bytes[split + 1 + i] ?? 0;
+    if (symbol > STATUSES.length * 11) throw new ListError(MAL_LINK_ERROR);
+    if (symbol) entries.set(id, { status: STATUSES[Math.floor((symbol - 1) / 11)], score: (symbol - 1) % 11 || null });
+  }
+  const name = new TextDecoder().decode(bytes.subarray(0, split));
+  return { source: "mal", name, scoreFormat: "MAL", entries };
 }

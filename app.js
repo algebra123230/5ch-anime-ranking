@@ -1,13 +1,16 @@
 // Renders the ranking table once; applyState redraws every cell from the URL state and the loaded list.
 import {
-  STATUSES, ListError, parseAniListUser, loadAniList, parseMalFile, formatScore,
-  saveMalList, loadSavedMalList, clearSavedMalList,
+  STATUSES, ListError, parseAniListUser, loadAniList, parseMalFile, formatScore, encodeMalList, decodeMalList,
 } from "./lists.js";
 
 const CONTROLS = { lang: ["ja", "romaji", "en"], links: ["mal", "anilist"] };
 // Elements applyState rewrites; set from renderTable's result (may not be in the document yet).
 let view = { cellViews: [], rankHeaders: [] };
-let list = null; // the viewer's loaded list (see lists.js), or null
+let list = null; // the list named by the URL (?anilist= or ?mal=, see lists.js) once loaded, or null
+const data = fetch("data/anime.json").then((res) => {
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+});
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -42,10 +45,6 @@ function setLang(node, ja) {
   else node.removeAttribute("lang");
 }
 
-function listEntry(cell, show) {
-  return list?.entries.get(list.source === "anilist" ? show.anilist_id : cell.id);
-}
-
 function applyState(state) {
   const { lang, links, hidden, scores } = state;
   const ja = lang === "ja";
@@ -62,7 +61,8 @@ function applyState(state) {
     setLang(th, ja);
   }
 
-  const counts = Object.fromEntries(STATUSES.map((s) => [s, 0])); // per cell, not per show
+  const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]));
+  const counted = new Set(); // count a show once, even if it charted in several years
   for (const { td, a, badge, cell, show } of view.cellViews) {
     const title = { ja: cell.title_ja, romaji: show.title_romaji, en: show.title_en ?? show.title_romaji }[lang];
     a.firstChild.textContent = title;
@@ -72,8 +72,11 @@ function applyState(state) {
     a.href = anilistId ? `https://anilist.co/anime/${anilistId}` : `https://myanimelist.net/anime/${cell.id}`;
     a.classList.toggle("fallback", links === "anilist" && !anilistId);
 
-    const entry = listEntry(cell, show);
-    if (entry) counts[entry.status]++;
+    const entry = list?.entries.get(cell.id);
+    if (entry && !counted.has(cell.id)) {
+      counted.add(cell.id);
+      counts[entry.status]++;
+    }
     const shown = entry && !hidden.has(entry.status);
     td.className = shown ? `s-${entry.status}` : list ? "faded" : "";
     badge.textContent = shown && scores ? formatScore(entry.score, list.scoreFormat) : "";
@@ -183,8 +186,7 @@ function wireDialog() {
       tryLoad(form.querySelector(".error"), () => loadAniList(parseAniListUser($("#anilist-name").value))));
     if (!loaded) return;
     list = loaded;
-    clearSavedMalList();
-    updateUrl({ anilist: loaded.name });
+    updateUrl({ anilist: loaded.name, mal: null });
     dialog.close();
   });
 
@@ -193,11 +195,13 @@ function wireDialog() {
     e.target.value = ""; // allow picking the same file again after an error
     if (!file) return;
     const loaded = await whileBusy($("#panel-mal .busy"), "Reading file…", () =>
-      tryLoad($("#panel-mal .error"), () => parseMalFile(file)));
+      tryLoad($("#panel-mal .error"), async () => {
+        const mal = await parseMalFile(file);
+        return { list: mal, code: await encodeMalList(mal, (await data).cells) };
+      }));
     if (!loaded) return;
-    list = loaded;
-    saveMalList(loaded);
-    updateUrl({ anilist: null });
+    list = loaded.list;
+    updateUrl({ mal: loaded.code, anilist: null });
     dialog.close();
   });
 }
@@ -212,20 +216,25 @@ function wireListBar() {
   }
   $("#show-scores").addEventListener("change", (e) => updateUrl({ scores: e.target.checked ? null : "0" }));
   $("#clear-list").addEventListener("click", () => {
-    // A shared ?anilist= link shows someone else's list; keep the viewer's own saved MAL list then.
-    if (list?.source === "mal") clearSavedMalList();
     list = null;
-    updateUrl({ anilist: null, hide: null, scores: null });
+    updateUrl({ anilist: null, mal: null, hide: null, scores: null });
   });
 }
 
-// On page load: the AniList user in the URL, else a MAL list saved in this browser.
+function listParams() {
+  const params = new URLSearchParams(location.search);
+  return { name: params.get("anilist"), code: params.get("mal") };
+}
+
+// On page load: the list named by the URL.
 async function restoreList() {
-  const name = new URLSearchParams(location.search).get("anilist");
-  const loaded = name
-    ? await whileBusy($("#load-status"), `Loading ${name}'s AniList list…`, () => tryLoad($("#load-error"), () => loadAniList(name)))
-    : loadSavedMalList();
-  if (loaded && !list) { // the viewer may have loaded a list while this one was loading
+  const { name, code } = listParams();
+  if (!name && !code) return;
+  const loaded = await whileBusy($("#load-status"), name ? `Loading ${name}'s AniList list…` : "Loading MAL list…", () =>
+    tryLoad($("#load-error"), async () => (name ? loadAniList(name) : decodeMalList(code, (await data).cells))));
+  // The viewer may have loaded or cleared a list meanwhile; show this one only if the URL still names it.
+  const now = listParams();
+  if (loaded && now.name === name && now.code === code) {
     list = loaded;
     applyState(readState());
   }
@@ -245,9 +254,7 @@ applyState(readState()); // toolbar buttons, before the data arrives
 restoreList(); // runs alongside the data load; both redraw, so either may finish first
 
 try {
-  const res = await fetch("data/anime.json");
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const { table, ...elements } = renderTable(await res.json());
+  const { table, ...elements } = renderTable(await data);
   view = elements;
   applyState(readState()); // fill the cells; re-reads the URL in case a toggle was clicked during load
   $("#table-wrap").replaceChildren(table); // last, so #status survives any error above

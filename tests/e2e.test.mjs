@@ -90,7 +90,11 @@ const ANILIST_LIST = {
   data: {
     MediaListCollection: {
       user: { name: "tester", mediaListOptions: { scoreFormat: "POINT_100" } },
-      lists: [{ entries: [{ mediaId: 20458, status: "COMPLETED", score: 85 }, { mediaId: 16498, status: "DROPPED", score: 0 }] }],
+      lists: [{ entries: [
+        { status: "COMPLETED", score: 85, media: { idMal: 20785 } },
+        { status: "DROPPED", score: 0, media: { idMal: 16498 } },
+        { status: "PLANNING", score: 0, media: { idMal: null } }, // not on MAL: ignored
+      ] }],
     },
   },
 };
@@ -160,9 +164,10 @@ const MAL_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <myanimelist>
   <myinfo><user_name>maltester</user_name></myinfo>
   <anime><series_animedb_id>20785</series_animedb_id><my_score>9</my_score><my_status>Watching</my_status></anime>
+  <anime><series_animedb_id>831</series_animedb_id><my_score>0</my_score><my_status>Completed</my_status></anime>
 </myanimelist>`;
 
-test("MAL export: bad file error, .xml.gz upload, saved across reload, clear", async () => {
+test("MAL export: bad file error, .xml.gz upload, list kept in the URL, clear, broken link", async () => {
   const page = await browser.newPage();
   await page.goto(base);
   await page.waitForSelector("table.ranking");
@@ -178,17 +183,27 @@ test("MAL export: bad file error, .xml.gz upload, saved across reload, clear", a
   assert.ok(await hasClass(mahouka, "s-watching"));
   assert.equal(await mahouka.locator(".score").innerText(), "9");
   assert.match(await page.innerText("#list-name"), /maltester/);
+  // Sugar charted in 2001 and 2002: both cells colored, counted once.
+  assert.ok(await hasClass(td(page, 2001, 18), "s-completed"));
+  assert.ok(await hasClass(td(page, 2002, 3), "s-completed"));
+  assert.match(await page.locator("label", { has: page.locator('[data-status="completed"]') }).innerText(), /\(1\)/);
 
-  await page.reload();
-  await page.locator("#list-bar").waitFor();
-  assert.ok(await hasClass(mahouka, "s-watching"));
+  const shared = page.url();
+  assert.match(shared, /mal=/);
+  const other = await browser.newPage();
+  await other.goto(shared);
+  await other.locator("#list-name", { hasText: "maltester" }).waitFor();
+  assert.ok(await hasClass(td(other, 2014, 17), "s-watching"));
+  assert.equal(await td(other, 2014, 17).locator(".score").innerText(), "9");
+  await other.close();
 
   await page.click("#clear-list");
   assert.equal(await page.isVisible("#list-bar"), false);
+  assert.doesNotMatch(page.url(), /mal=/);
   assert.ok(!(await hasClass(mahouka, "s-watching")));
   assert.ok(!(await hasClass(mahouka, "faded")));
-  await page.reload();
-  await page.waitForSelector("table.ranking");
-  assert.equal(await page.isVisible("#list-bar"), false);
+
+  await page.goto(`${base}?mal=bm90LWEtbGlzdA`);
+  await page.locator("#load-error", { hasText: "This MAL list link is broken" }).waitFor();
   await page.close();
 });

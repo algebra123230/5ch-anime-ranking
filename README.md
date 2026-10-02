@@ -7,7 +7,9 @@ The 5ch "best anime of the year" ranking (2001-2025, top 30 per year) as an inte
 "Load list" overlays your watch status on the chart:
 
 - AniList: enter your username or profile link. The username is kept in the page URL, so the link reloads your list.
-- MAL: export your anime list on MAL (Profile → Export My List) and choose the downloaded `.xml.gz`. The list is saved in this browser only.
+- MAL: export your anime list on MAL (Profile → Export My List) and choose the downloaded `.xml.gz`. Your status and score for each chart show is compressed into the page URL (`?mal=`), so the link reloads or shares your list.
+
+Nothing is stored in the browser: the URL is the whole state.
 
 ## Data
 
