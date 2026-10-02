@@ -32,6 +32,7 @@
     <label class="s-dropped"><input type="checkbox" data-status="dropped"> Dropped <span class="count"></span></label>
     <label class="s-planning"><input type="checkbox" data-status="planning"> Planning <span class="count"></span></label>
     <label><input type="checkbox" id="show-scores"> Scores</label>
+    <button type="button" id="open-summary">Summary</button>
     <button type="button" id="clear-list">Clear</button>
   </div>
   <main id="table-wrap">
@@ -59,6 +60,17 @@
       <input type="file" id="mal-file" accept=".xml,.gz" aria-label="MAL export file">
       <p class="busy" role="status" hidden></p>
       <p class="error" role="alert" hidden></p>
+    </div>
+  </dialog>
+  <dialog id="summary-dialog" aria-labelledby="summary-title">
+    <div class="dialog-head">
+      <h2 id="summary-title">List summary</h2>
+      <button type="button" class="close" aria-label="Close">×</button>
+    </div>
+    <textarea id="summary-text" readonly rows="7" aria-label="Summary text"></textarea>
+    <div class="row">
+      <button type="button" id="copy-summary">Copy</button>
+      <p id="copy-status" role="status"></p>
     </div>
   </dialog>
 </body>

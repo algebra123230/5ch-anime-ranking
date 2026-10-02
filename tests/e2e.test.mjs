@@ -83,6 +83,11 @@ test("data load failure shows a readable error", async () => {
   await page.close();
 });
 
+const yearCount = (page, year) => page.locator(`th[data-year="${year}"] .year-count`);
+const openSummary = async (page) => {
+  await page.click("#open-summary");
+  return page.inputValue("#summary-text");
+};
 const hasClass = (locator, name) => locator.evaluate((node, name) => node.classList.contains(name), name);
 
 // Mahouka (2014 #17): MAL 20785, AniList 20458. Attack on Titan (2013 #1): MAL = AniList = 16498.
@@ -131,6 +136,21 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
   assert.equal(await aot.locator(".score").innerText(), "");
   assert.ok(await hasClass(td(page, 2001, 1), "faded"));
   assert.match(await page.locator("label", { has: page.locator('[data-status="completed"]') }).innerText(), /\(1\)/);
+  assert.equal(await yearCount(page, 2014).innerText(), "1/30");
+  assert.equal(await yearCount(page, 2013).innerText(), "0/30");
+
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  assert.equal(await openSummary(page), [
+    "5ch Best Anime Ranking 2001-2025 - AniList: tester",
+    "Completed 1 of 723 shows",
+    "Watching 0 · On hold 0 · Dropped 1 · Planning 0",
+    "Average score: 85.0/100 (1 scored)",
+    "Most completed year: 2014 (1 of 30)",
+    page.url(),
+  ].join("\n"));
+  await page.click("#copy-summary");
+  await page.locator("#copy-status", { hasText: "Copied." }).waitFor();
+  await page.click("#summary-dialog .close");
 
   await page.uncheck('[data-status="completed"]');
   assert.ok(await hasClass(mahouka, "faded"));
@@ -187,6 +207,16 @@ test("MAL export: bad file error, .xml.gz upload, list kept in the URL, clear, b
   assert.ok(await hasClass(td(page, 2001, 18), "s-completed"));
   assert.ok(await hasClass(td(page, 2002, 3), "s-completed"));
   assert.match(await page.locator("label", { has: page.locator('[data-status="completed"]') }).innerText(), /\(1\)/);
+  assert.equal(await yearCount(page, 2001).innerText(), "1/30");
+  assert.equal(await yearCount(page, 2002).innerText(), "1/30");
+  const summary = (await openSummary(page)).split("\n");
+  assert.deepEqual(summary.slice(1, 5), [
+    "Completed 1 of 723 shows",
+    "Watching 1 · On hold 0 · Dropped 0 · Planning 0",
+    "Average score: 9.0/10 (1 scored)",
+    "Most completed years: 2001, 2002 (1 of 30)",
+  ]);
+  await page.click("#summary-dialog .close");
 
   const shared = page.url();
   assert.match(shared, /mal=/);
@@ -200,6 +230,7 @@ test("MAL export: bad file error, .xml.gz upload, list kept in the URL, clear, b
   await page.click("#clear-list");
   assert.equal(await page.isVisible("#list-bar"), false);
   assert.doesNotMatch(page.url(), /mal=/);
+  assert.equal(await yearCount(page, 2001).innerText(), "");
   assert.ok(!(await hasClass(mahouka, "s-watching")));
   assert.ok(!(await hasClass(mahouka, "faded")));
 
