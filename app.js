@@ -6,7 +6,7 @@ import {
 
 const CONTROLS = { lang: ["ja", "romaji", "en"], links: ["mal", "anilist"] };
 // Elements applyState rewrites; set from renderTable's result (may not be in the document yet).
-let view = { cells: [], rankHeaders: [] };
+let view = { cellViews: [], rankHeaders: [] };
 let list = null; // the viewer's loaded list (see lists.js), or null
 
 const $ = (selector) => document.querySelector(selector);
@@ -63,7 +63,7 @@ function applyState(state) {
   }
 
   const counts = Object.fromEntries(STATUSES.map((s) => [s, 0])); // per cell, not per show
-  for (const { td, a, badge, cell, show } of view.cells) {
+  for (const { td, a, badge, cell, show } of view.cellViews) {
     const title = { ja: cell.title_ja, romaji: show.title_romaji, en: show.title_en ?? show.title_romaji }[lang];
     a.firstChild.textContent = title;
     a.title = title;
@@ -125,15 +125,10 @@ function renderTable({ cells, anime }) {
     })]);
   });
   const table = el("table", { className: "ranking" }, [el("thead", {}, [head]), el("tbody", {}, rows)]);
-  return { table, cells: cellViews, rankHeaders };
+  return { table, cellViews, rankHeaders };
 }
 
 // --- Loading a list ---------------------------------------------------------
-
-function setList(newList) {
-  list = newList;
-  applyState(readState());
-}
 
 function showError(node, message) {
   node.textContent = message;
@@ -164,7 +159,7 @@ function wireDialog() {
     });
   }
   $("#open-load").addEventListener("click", () => {
-    showError($("#load-error"), "");
+    for (const node of document.querySelectorAll("#load-error, #load-dialog .error")) showError(node, "");
     dialog.showModal();
   });
   dialog.querySelector(".close").addEventListener("click", () => dialog.close());
@@ -177,9 +172,9 @@ function wireDialog() {
     const loaded = await tryLoad(form.querySelector(".error"), () => loadAniList(parseAniListUser($("#anilist-name").value)));
     submit.disabled = false;
     if (!loaded) return;
+    list = loaded;
     clearSavedMalList();
     updateUrl({ anilist: loaded.name });
-    setList(loaded);
     dialog.close();
   });
 
@@ -189,9 +184,9 @@ function wireDialog() {
     if (!file) return;
     const loaded = await tryLoad($("#panel-mal .error"), () => parseMalFile(file));
     if (!loaded) return;
+    list = loaded;
     saveMalList(loaded);
     updateUrl({ anilist: null });
-    setList(loaded);
     dialog.close();
   });
 }
@@ -206,17 +201,21 @@ function wireListBar() {
   }
   $("#show-scores").addEventListener("change", (e) => updateUrl({ scores: e.target.checked ? null : "0" }));
   $("#clear-list").addEventListener("click", () => {
-    clearSavedMalList();
+    // A shared ?anilist= link shows someone else's list; keep the viewer's own saved MAL list then.
+    if (list?.source === "mal") clearSavedMalList();
+    list = null;
     updateUrl({ anilist: null, hide: null, scores: null });
-    setList(null);
   });
 }
 
 // On page load: the AniList user in the URL, else a MAL list saved in this browser.
 async function restoreList() {
   const name = new URLSearchParams(location.search).get("anilist");
-  if (name) setList(await tryLoad($("#load-error"), () => loadAniList(name)));
-  else setList(loadSavedMalList());
+  const loaded = name ? await tryLoad($("#load-error"), () => loadAniList(name)) : loadSavedMalList();
+  if (loaded && !list) { // the viewer may have loaded a list while this one was loading
+    list = loaded;
+    applyState(readState());
+  }
 }
 
 // --- Startup ----------------------------------------------------------------
@@ -230,6 +229,7 @@ for (const group of document.querySelectorAll("[data-control]")) {
 wireDialog();
 wireListBar();
 applyState(readState()); // toolbar buttons, before the data arrives
+restoreList(); // runs alongside the data load; both redraw, so either may finish first
 
 try {
   const res = await fetch("data/anime.json");
@@ -242,4 +242,3 @@ try {
   console.error(err);
   $("#status").textContent = "Couldn't load the ranking data. Try reloading the page.";
 }
-await restoreList(); // reports its own errors next to "Load list"

@@ -133,11 +133,22 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
   await page.check('[data-status="completed"]');
   assert.equal(await mahouka.locator(".score").innerText(), "");
 
+  await page.uncheck('[data-status="dropped"]');
+
   await page.reload();
   await page.locator("#list-bar").waitFor();
   assert.ok(await hasClass(mahouka, "s-completed"));
-  assert.ok(await hasClass(aot, "s-dropped"));
+  assert.ok(await hasClass(aot, "faded"));
+  assert.equal(await page.isChecked('[data-status="dropped"]'), false);
   assert.equal(await page.isChecked("#show-scores"), false);
+
+  // Loading a MAL export replaces the AniList list and drops it from the URL.
+  await page.click("#open-load");
+  await page.click("#tab-mal");
+  await page.setInputFiles("#mal-file", { name: "animelist.xml", mimeType: "text/xml", buffer: Buffer.from(MAL_XML) });
+  await page.locator("#list-name", { hasText: "maltester" }).waitFor();
+  assert.doesNotMatch(page.url(), /anilist=/);
+  assert.ok(await hasClass(mahouka, "s-watching"));
   await page.close();
 });
 

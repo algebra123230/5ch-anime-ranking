@@ -56,7 +56,10 @@ export async function loadAniList(name) {
   // A show in a custom list appears in several lists with the same status; the Map dedupes it.
   const entries = new Map();
   for (const list of collection.lists) {
-    for (const e of list.entries) entries.set(e.mediaId, { status: ANILIST_STATUS[e.status], score: e.score || null });
+    for (const e of list.entries) {
+      const status = ANILIST_STATUS[e.status];
+      if (status) entries.set(e.mediaId, { status, score: e.score || null });
+    }
   }
   return { source: "anilist", name: collection.user.name, scoreFormat: collection.user.mediaListOptions.scoreFormat, entries };
 }
