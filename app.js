@@ -56,7 +56,7 @@ function renderTable({ cells, anime }) {
 
   const head = el("tr", {}, [el("th", { className: "corner" }), ...years.map((y) => el("th", { scope: "col", textContent: y }))]);
   const rows = ranks.map((rank) => el("tr", {}, [
-    el("th", { scope: "row", className: `rank ${rankClass(rank)}`, textContent: `${rank}位` }),
+    el("th", { scope: "row", className: `rank ${rankClass(rank)}`, textContent: rank }),
     ...years.map((year) => {
       const cell = byKey.get(`${year}-${rank}`);
       const a = el("a", { target: "_blank", rel: "noopener" }, [el("span")]);
