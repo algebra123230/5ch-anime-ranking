@@ -206,6 +206,9 @@ test("MAL export: bad file error, .xml.gz upload, list kept in the URL, clear, b
   await page.click("#tab-mal");
   await page.setInputFiles("#mal-file", { name: "notes.xml", mimeType: "text/xml", buffer: Buffer.from("<notes/>") });
   await page.locator("#panel-mal .error", { hasText: "This file isn't a MAL export" }).waitFor();
+  await page.$eval("#panel-mal .error", (node) => { node.textContent = ""; }); // so the next wait sees a new error
+  await page.setInputFiles("#mal-file", { name: "animelist.xml", mimeType: "text/xml", buffer: Buffer.from("<myanimelist><myinfo></myinfo></myanimelist>") });
+  await page.locator("#panel-mal .error", { hasText: "This file isn't a MAL export" }).waitFor();
 
   await page.setInputFiles("#mal-file", { name: "animelist.xml.gz", mimeType: "application/gzip", buffer: gzipSync(MAL_XML) });
   await page.locator("#list-bar").waitFor();

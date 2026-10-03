@@ -84,7 +84,8 @@ export async function parseMalFile(file) {
     const status = MAL_STATUS[field("my_status")];
     if (status) entries.set(Number(field("series_animedb_id")), { status, score: Number(field("my_score")) || null });
   }
-  const name = doc.querySelector("myinfo > user_name")?.textContent.trim() ?? "";
+  const name = doc.querySelector("myinfo > user_name")?.textContent.trim();
+  if (!name) throw new ListError(MAL_FILE_ERROR); // every MAL export names its user; the post text starts with it
   return { source: "mal", name, scoreFormat: "MAL", entries };
 }
 
@@ -129,7 +130,7 @@ export async function decodeMalList(code, cells) {
     throw new ListError(MAL_LINK_ERROR);
   }
   const split = bytes.indexOf(0);
-  if (split < 0) throw new ListError(MAL_LINK_ERROR);
+  if (split < 1) throw new ListError(MAL_LINK_ERROR); // missing separator or empty name
   const entries = new Map();
   for (const [i, id] of chartShows(cells).entries()) {
     const symbol = bytes[split + 1 + i] ?? 0;
