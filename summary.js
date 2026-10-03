@@ -41,6 +41,8 @@ function highlights(byYear) {
 }
 
 const formatAverage = ({ value, scale }) => `${value.toFixed(1)}/${scale}`;
+// Caps tied years at 3 so a light list (1 completed show in many years) keeps the post under X's 280 characters.
+const formatYears = (years) => (years.length > 3 ? `${years.slice(0, 3).join(", ")} and ${years.length - 3} more` : years.join(", "));
 
 // Multi-line text for the Copy button.
 export function summaryText({ shows, counts, byYear, average }, list, url) {
@@ -50,7 +52,7 @@ export function summaryText({ shows, counts, byYear, average }, list, url) {
     `Completed ${counts.completed} of ${shows} shows`,
     STATUSES.slice(1).map((s) => `${LABELS[s]} ${counts[s]}`).join(" · "),
     average && `Average score: ${formatAverage(average)} (${average.scored} scored)`,
-    topYears.length && `Most completed year${topYears.length > 1 ? "s" : ""}: ${topYears.join(", ")} (${most} of ${byYear.get(topYears[0]).size})`,
+    topYears.length && `Most completed year${topYears.length > 1 ? "s" : ""}: ${formatYears(topYears)} (${most} of ${byYear.get(topYears[0]).size})`,
     url,
   ].filter(Boolean).join("\n");
 }
@@ -61,6 +63,6 @@ export function postText({ shows, counts, byYear, average }, list) {
   return [
     `${list.name} watched ${counts.completed} of the ${shows} anime in 5ch's top 30 of each year (${range})`,
     average && `average score ${formatAverage(average)}`,
-    topYears.length && `most in ${topYears.join(", ")}`,
+    topYears.length && `most in ${formatYears(topYears)}`,
   ].filter(Boolean).join(" · ");
 }

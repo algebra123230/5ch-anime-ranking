@@ -85,7 +85,7 @@ function applyState(state) {
   }
   $("#list-bar").hidden = !list;
   // The total gives the per-show status counts their denominator.
-  if (list) $("#list-name").textContent = `${sourceLabel(list)}: ${list.name}${summary ? ` · ${summary.shows} shows` : ""}`;
+  if (list) $("#list-name").textContent = `${sourceLabel(list)}: ${list.name}${summary ? ` · of ${summary.shows} shows` : ""}`;
   for (const box of document.querySelectorAll("[data-status]")) {
     box.checked = !hidden.has(box.dataset.status);
     box.parentElement.querySelector(".count").textContent = `(${summary?.counts[box.dataset.status] ?? 0})`;
@@ -230,7 +230,9 @@ function wireSummary() {
   });
   // The system share sheet (mostly phones) reaches apps without a web share link: Instagram, Discord, LINE, Messages.
   $("#share-native").hidden = !navigator.share;
-  $("#share-native").addEventListener("click", () => navigator.share(post).catch(() => {})); // rejects when the viewer cancels
+  $("#share-native").addEventListener("click", () => navigator.share(post).catch((err) => {
+    if (err.name !== "AbortError") status.textContent = "Couldn't share. Use Copy."; // AbortError: the viewer cancelled
+  }));
   $("#copy-summary").addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText($("#summary-text").value); // clipboard is undefined on insecure origins

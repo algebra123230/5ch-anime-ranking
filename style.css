@@ -250,5 +250,5 @@ dialog button[type=submit]:disabled { opacity: 0.6; cursor: progress; }
 
 @media (max-width: 600px) {
   dialog { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 12px 12px 0 0; }
-  dialog input:not([type=file]), dialog button, #open-load, #open-summary, #clear-list { min-height: 44px; }
+  dialog input:not([type=file]), dialog button, .share, #open-load, #open-summary, #clear-list { min-height: 44px; }
 }
