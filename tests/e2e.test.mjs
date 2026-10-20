@@ -139,6 +139,9 @@ test("AniList list: errors, profile URL, statuses, filters, scores, reload", asy
   assert.match(await page.locator("label", { has: page.locator('[data-status="completed"]') }).innerText(), /\(1\)/);
   assert.equal(await yearCount(page, 2014).innerText(), "1/30");
   assert.equal(await yearCount(page, 2013).innerText(), "0/30");
+  assert.equal(await page.innerText("#list-total"), "Out of 723 shows:");
+  assert.equal(await page.getAttribute('[data-bar="none"]', "title"), "Not on list: 721 of 723 shows");
+  assert.ok(await page.locator('[data-bar="watching"]').isHidden());
 
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
   assert.equal(await openSummary(page), [
@@ -215,7 +218,7 @@ test("MAL export: bad file error, .xml.gz upload, list kept in the URL, clear, b
   const mahouka = td(page, 2014, 17);
   assert.ok(await hasClass(mahouka, "s-watching"));
   assert.equal(await mahouka.locator(".score").innerText(), "9");
-  assert.equal(await page.innerText("#list-name"), "MAL: maltester · of 723 shows");
+  assert.equal(await page.innerText("#list-name"), "MAL: maltester");
   // Sugar charted in 2001 and 2002: both cells colored, counted once.
   assert.ok(await hasClass(td(page, 2001, 18), "s-completed"));
   assert.ok(await hasClass(td(page, 2002, 3), "s-completed"));

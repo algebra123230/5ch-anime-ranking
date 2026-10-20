@@ -36,14 +36,26 @@
   <p id="load-error" class="banner error" role="alert" hidden></p>
   <div id="list-bar" class="list-bar" hidden>
     <span id="list-name"></span>
+    <span id="list-total"></span>
     <label class="s-completed"><input type="checkbox" data-status="completed"> Completed <span class="count"></span></label>
     <label class="s-watching"><input type="checkbox" data-status="watching"> Watching <span class="count"></span></label>
     <label class="s-on_hold"><input type="checkbox" data-status="on_hold"> On hold <span class="count"></span></label>
     <label class="s-dropped"><input type="checkbox" data-status="dropped"> Dropped <span class="count"></span></label>
     <label class="s-planning"><input type="checkbox" data-status="planning"> Planning <span class="count"></span></label>
     <label><input type="checkbox" id="show-scores"> Scores</label>
-    <button type="button" id="open-summary">Summary</button>
-    <button type="button" id="clear-list">Clear</button>
+    <span class="list-actions">
+      <button type="button" id="open-summary">Summary</button>
+      <button type="button" id="clear-list">Clear</button>
+    </span>
+    <!-- Hidden from screen readers: the checkbox counts carry the same numbers as text. -->
+    <div id="status-bar" aria-hidden="true">
+      <span data-bar="completed" data-label="Completed"></span>
+      <span data-bar="watching" data-label="Watching"></span>
+      <span data-bar="on_hold" data-label="On hold"></span>
+      <span data-bar="dropped" data-label="Dropped"></span>
+      <span data-bar="planning" data-label="Planning"></span>
+      <span data-bar="none" data-label="Not on list"></span>
+    </div>
   </div>
   <main id="table-wrap">
     <p id="status" role="alert">Loading…</p>

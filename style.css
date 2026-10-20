@@ -20,6 +20,12 @@
   --s-on_hold: #f6ebcd;
   --s-dropped: #f4d9d7;
   --s-planning: #e7e3f1;
+  /* Status bar segments: the chip hues, strong enough for a thin mark (checked for colorblind separation). */
+  --m-completed: #4f9a5b;
+  --m-watching: #4a86c8;
+  --m-on_hold: #c9961c;
+  --m-dropped: #c9534f;
+  --m-planning: #8a6cc8;
   font-family: system-ui, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
   color: var(--fg);
 }
@@ -166,7 +172,8 @@ body {
 /* --- Load list button, list bar --- */
 
 #open-load, #open-summary, #clear-list { border: 1px solid var(--line); border-radius: 8px; }
-#open-summary { margin-left: auto; }
+/* Summary and Clear wrap together, pushed to the right. */
+.list-actions { display: flex; gap: 12px; margin-left: auto; }
 #open-summary:disabled { opacity: 0.5; cursor: default; }
 .error { margin: 6px 0 0; color: #b42318; font-size: 13px; }
 .busy { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
@@ -200,6 +207,17 @@ body {
 }
 .list-bar[hidden] { display: none; }
 #list-name { font-weight: 600; }
+#list-total { color: var(--muted); }
+#list-total:empty { display: none; }
+/* Full-width line under the controls; segment widths are set by flex-grow = show count. */
+#status-bar { flex-basis: 100%; display: flex; gap: 2px; height: 8px; margin: 2px 0; }
+#status-bar span { flex-basis: 0; border-radius: 2px; }
+[data-bar="completed"] { background: var(--m-completed); }
+[data-bar="watching"] { background: var(--m-watching); }
+[data-bar="on_hold"] { background: var(--m-on_hold); }
+[data-bar="dropped"] { background: var(--m-dropped); }
+[data-bar="planning"] { background: var(--m-planning); }
+[data-bar="none"] { background: var(--line); }
 .list-bar label {
   display: inline-flex;
   align-items: center;
