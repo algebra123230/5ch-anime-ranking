@@ -9,6 +9,8 @@ The 5ch "best anime of the year" ranking (2001-2025, top 30 per year) as an inte
 - AniList: enter your username or profile link.
 - MAL: export your anime list on MAL (Profile → Export My List) and choose the downloaded file (`.xml` or `.xml.gz`).
 
+Each year header shows how many of its 30 shows you completed. Summary shows your status counts, average score and most-completed year as text to copy, with the page link.
+
 ## Data
 
 - `data/rankings.csv` is the source of truth: one row per cell (`year,rank,title_ja,mal_id,title_romaji`).
